@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=JetBrains+Mono:wght@400&display=swap');
+
+.nd-root { font-family: 'Syne', sans-serif; }
+.nd-mono { font-family: 'JetBrains Mono', monospace; }
+
+.nd-pulse {
+  animation: nd-pulse 2.5s ease-in-out infinite;
+}
+@keyframes nd-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 7px #95FE59; }
+  50%       { opacity: 0.35; box-shadow: none; }
+}
+
+.nd-border-glow {
+  position: relative;
+}
+.nd-border-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(145deg, rgba(121,34,242,0.45) 0%, transparent 55%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.nd-field:focus {
+  outline: none;
+  border-color: rgba(121,34,242,0.65) !important;
+  box-shadow: 0 0 0 3px rgba(121,34,242,0.1);
+}
+
+.nd-btn {
+  background: linear-gradient(90deg, #7922F2, #9b45f5);
+  transition: opacity 0.2s, transform 0.15s;
+}
+.nd-btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+.nd-btn:active:not(:disabled) { transform: translateY(0px); }
+.nd-btn:disabled { opacity: 0.4; cursor: not-allowed; }
