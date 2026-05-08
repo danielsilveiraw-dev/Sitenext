@@ -9,6 +9,6 @@ export default defineConfig({
   },
 
   datasource: {
-    url: "file:./prisma/dev.db",
+    url: process.env.DATABASE_URL!,
   },
 });
