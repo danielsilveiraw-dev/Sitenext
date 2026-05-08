@@ -1,30 +1,15 @@
-const { execSync } = require("child_process");
-const { createServer } = require("http");
-const next = require("next");
-const fs = require("fs");
+const { createServer } = require('http')
+const { parse } = require('url')
+const next = require('next')
 
-const port = process.env.PORT || 8080;
-const hostname = "0.0.0.0";
-
-if (!fs.existsSync(".next")) {
-  console.log("Build não encontrado. Rodando npm run build...");
-  execSync("npm run build", {
-    stdio: "inherit",
-  });
-}
-
-const app = next({
-  dev: false,
-  hostname,
-  port,
-});
-
-const handle = app.getRequestHandler();
+const app = next({ dev: false })
+const handle = app.getRequestHandler()
 
 app.prepare().then(() => {
   createServer((req, res) => {
-    handle(req, res);
-  }).listen(port, hostname, () => {
-    console.log(`Painel rodando em http://${hostname}:${port}`);
-  });
-});
+    const parsedUrl = parse(req.url, true)
+    handle(req, res, parsedUrl)
+  }).listen(8080, '0.0.0.0', () => {
+    console.log('> Ready on http://0.0.0.0:8080')
+  })
+})
