@@ -17,14 +17,9 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    async jwt({ token, account, profile }) {
-      // account só existe no primeiro login — salva o id no token
+    async jwt({ token, account }) {
       if (account?.providerAccountId) {
         token.id = account.providerAccountId;
-      }
-      // profile também só existe no primeiro login — fallback extra
-      if (profile?.id) {
-        token.id = String((profile as any).id);
       }
       return token;
     },
