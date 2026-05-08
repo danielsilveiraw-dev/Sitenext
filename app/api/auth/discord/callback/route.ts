@@ -79,8 +79,8 @@ export async function GET(req: NextRequest) {
 
     response.cookies.set("session", sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: true,
+      sameSite: "none",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
