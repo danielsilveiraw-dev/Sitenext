@@ -102,35 +102,38 @@ export default function AnnouncementsPage({
     access?.role === "ADMIN" ||
     access?.role === "EDITOR";
 
-  async function uploadImage(file: File) {
-    setUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Erro ao enviar imagem");
-        return;
-      }
-
-      const fullUrl = `${window.location.origin}${data.url}`;
-      setImageUrl(fullUrl);
-    } catch (err) {
-      console.error(err);
-      alert("Erro no upload");
-    } finally {
-      setUploading(false);
-    }
+async function uploadImage(file: File) {
+  if (file.size > 4 * 1024 * 1024) {
+    alert("Envie uma imagem menor que 4MB");
+    return;
   }
 
+  setUploading(true);
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(data.error || "Erro ao enviar imagem");
+      return;
+    }
+
+    setImageUrl(data.url);
+  } catch (err) {
+    console.error(err);
+    alert("Erro no upload");
+  } finally {
+    setUploading(false);
+  }
+}
   async function sendAnnouncement() {
     if (!canSend) {
       alert("Você não tem permissão para enviar anúncios.");
