@@ -18,6 +18,8 @@ export async function GET() {
 
   const user = jwt.verify(session, process.env.JWT_SECRET!) as SessionUser;
 
+  const botApiUrl = process.env.BOT_API_URL || "http://127.0.0.1:8000";
+
   // 1. Pega servidores do usuário — com cache de 30s para evitar rate limit
   const userRes = await fetch("https://discord.com/api/users/@me/guilds", {
     headers: {
@@ -40,7 +42,7 @@ export async function GET() {
   }
 
   // 2. Pega servidores do bot
-  const botRes = await fetch("http://127.0.0.1:8000/bot-guilds", {
+  const botRes = await fetch(`${botApiUrl}/bot-guilds`, {
     headers: {
       Authorization: `Bearer ${process.env.BOT_API_SECRET}`,
     },

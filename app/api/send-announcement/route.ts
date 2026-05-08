@@ -14,7 +14,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    const botRes = await fetch("http://127.0.0.1:8000/send-announcement", {
+    const botApiUrl = process.env.BOT_API_URL || "http://127.0.0.1:8000";
+
+    const botRes = await fetch(`${botApiUrl}/send-announcement`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -25,7 +27,6 @@ export async function POST(req: NextRequest) {
 
     const data = await botRes.json();
 
-    // Salva log no banco apenas se o envio foi bem-sucedido
     if (botRes.ok && body.botId) {
       await prisma.panelLog.create({
         data: {
