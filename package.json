@@ -2,12 +2,12 @@
   "name": "painel-discord",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "npm run build && next start -H 0.0.0.0 -p ${PORT:-3000}",
-    "lint": "eslint ."
-  },
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start -H 0.0.0.0 -p 8080",
+  "lint": "eslint ."
+},
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/adapter-pg": "^7.8.0",
