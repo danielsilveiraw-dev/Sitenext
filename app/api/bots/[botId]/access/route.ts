@@ -1,17 +1,34 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+
+type SessionUser = {
+  id: string;
+};
+
+async function getUser() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
+
+  if (!token) return null;
+
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET!) as SessionUser;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getUser();
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
@@ -21,7 +38,7 @@ export async function GET(
       where: {
         botId_userId: {
           botId,
-          userId: session.user.id,
+          userId: user.id,
         },
       },
       select: {
@@ -35,7 +52,7 @@ export async function GET(
 
     return NextResponse.json(access);
   } catch (err) {
-    console.error(err);
+    console.error("[bot access]", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

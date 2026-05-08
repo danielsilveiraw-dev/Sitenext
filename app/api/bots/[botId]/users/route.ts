@@ -1,26 +1,47 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
-// GET — lista todos os usuários com acesso ao bot
+type SessionUser = {
+  id: string;
+};
+
+async function getUser() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
+
+  if (!token) return null;
+
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET!) as SessionUser;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getUser();
+
+    if (!user?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     const { botId } = await params;
 
-    // Verifica se quem pede tem acesso
     const myAccess = await prisma.botAccess.findUnique({
-      where: { botId_userId: { botId, userId: session.user.id } },
+      where: {
+        botId_userId: {
+          botId,
+          userId: user.id,
+        },
+      },
     });
+
     if (!myAccess) {
       return NextResponse.json({ error: "Sem acesso" }, { status: 403 });
     }
@@ -29,25 +50,31 @@ export async function GET(
       where: { botId },
       orderBy: { createdAt: "asc" },
       include: {
-        user: { select: { id: true, name: true, avatar: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
       },
     });
 
     return NextResponse.json(accesses);
   } catch (err) {
-    console.error(err);
+    console.error("[bot users GET]", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
 
-// POST — adiciona um novo usuário
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ botId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getUser();
+
+    if (!user?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
@@ -55,47 +82,62 @@ export async function POST(
     const { userId, role } = await req.json();
 
     if (!userId || !role) {
-      return NextResponse.json({ error: "userId e role são obrigatórios" }, { status: 400 });
+      return NextResponse.json(
+        { error: "userId e role são obrigatórios" },
+        { status: 400 }
+      );
     }
 
-    // Só OWNER ou ADMIN podem adicionar
     const myAccess = await prisma.botAccess.findUnique({
-      where: { botId_userId: { botId, userId: session.user.id } },
+      where: {
+        botId_userId: {
+          botId,
+          userId: user.id,
+        },
+      },
     });
+
     if (!myAccess || (myAccess.role !== "OWNER" && myAccess.role !== "ADMIN")) {
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
     }
 
-    // Cria o usuário no banco caso não exista
     await prisma.user.upsert({
       where: { id: userId },
       update: {},
-      create: { id: userId, name: "Usuário" },
-    });
-
-    const access = await prisma.botAccess.create({
-      data: { botId, userId, role },
-      include: {
-        user: { select: { id: true, name: true, avatar: true } },
+      create: {
+        id: userId,
+        name: "Usuário",
+        avatar: null,
       },
     });
 
-    // Log
-    await prisma.panelLog.create({
+    const access = await prisma.botAccess.create({
       data: {
         botId,
-        userId: session.user.id,
-        action: "USUÁRIO ADICIONADO",
-        detail: `${userId} como ${role}`,
+        userId,
+        role,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
       },
     });
 
     return NextResponse.json(access);
   } catch (err: any) {
     if (err.code === "P2002") {
-      return NextResponse.json({ error: "Usuário já tem acesso" }, { status: 409 });
+      return NextResponse.json(
+        { error: "Usuário já tem acesso" },
+        { status: 409 }
+      );
     }
-    console.error(err);
+
+    console.error("[bot users POST]", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
