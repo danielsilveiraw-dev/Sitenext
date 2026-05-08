@@ -1,7 +1,5 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-
 function DiscordIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
@@ -35,14 +33,13 @@ export default function SignInPage() {
           usuários e permissões.
         </p>
 
-        <button
-          type="button"
-          onClick={() => signIn("discord", { callbackUrl: "/dashboard" })}
+        <a
+          href="/api/auth/discord"
           className="flex h-[60px] w-full items-center justify-center gap-3 rounded-[18px] bg-gradient-to-br from-[#5865F2] to-[#7b84ff] text-[15px] font-bold text-white shadow-[0_18px_50px_rgba(88,101,242,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(88,101,242,0.45)]"
         >
           <DiscordIcon />
           Entrar com Discord
-        </button>
+        </a>
 
         <div className="mt-7 text-xs text-white/30">
           NextDevs © 2026
