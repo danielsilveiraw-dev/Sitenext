@@ -374,12 +374,13 @@ export default function LandingPage() {
         }
 
         .section-tag {
-          margin-bottom: 12px;
-          color: #8c46ff;
+          margin-bottom: 14px;
+          color: #95fe59;
           font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          letter-spacing: 0.16em;
+          font-size: 13px;
+          letter-spacing: 0.14em;
           text-transform: uppercase;
+          text-shadow: 0 0 18px rgba(149,254,89,0.35);
         }
 
         .section-title {
@@ -617,7 +618,6 @@ export default function LandingPage() {
           <div className="hero-tag">
             <span className="hero-tag-dot" />
             PAINEL DE GERENCIAMENTO DISCORD
-            <span className="hero-tag-badge">v2.0</span>
           </div>
 
           <h1 className="hero-title">
@@ -650,7 +650,7 @@ export default function LandingPage() {
         <section className="stats-wrap">
           <div className="stats-card">
             {[
-              { val: "3",   suffix: "",  label: "servidores ativos" },
+              { val: "842", suffix: "+", label: "membros gerenciados" },
               { val: "99",  suffix: "%", label: "uptime garantido" },
               { val: "24",  suffix: "h", label: "suporte disponível" },
             ].map((s) => (
