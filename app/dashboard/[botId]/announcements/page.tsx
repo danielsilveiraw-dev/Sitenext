@@ -27,6 +27,28 @@ type BotInfo = {
   online?: boolean;
 };
 
+function BotAvatar({ name, avatar, className }: { name: string; avatar?: string | null; className?: string }) {
+  const [error, setError] = useState(false);
+
+  if (!avatar || error) {
+    return (
+      <div className={className || "bot-avatar-fallback"}>
+        {name?.[0]?.toUpperCase() ?? "?"}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={avatar}
+      alt={name}
+      className={className || "bot-avatar"}
+      referrerPolicy="no-referrer"
+      onError={() => setError(true)}
+    />
+  );
+}
+
 export default function AnnouncementsPage({
   params,
 }: {
@@ -80,7 +102,9 @@ export default function AnnouncementsPage({
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data)) {
-            const currentBot = data.find((bot: BotInfo) => bot.id === resolved.botId);
+            const currentBot = data.find(
+              (bot: BotInfo) => bot.id === resolved.botId
+            );
             if (currentBot) setBotInfo(currentBot);
           }
         })
@@ -237,9 +261,145 @@ export default function AnnouncementsPage({
 
   if (checkingAccess) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-black text-white">
-        Verificando permissões...
-      </main>
+      <>
+        <style jsx global>{`
+          body {
+            margin: 0;
+            background: #050505;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+          }
+
+          .loading-bg {
+            position: fixed;
+            inset: 0;
+            background:
+              radial-gradient(circle at 10% 10%, rgba(121,34,242,.18), transparent 30%),
+              radial-gradient(circle at 90% 90%, rgba(149,254,89,.08), transparent 30%);
+          }
+
+          .loading-grid {
+            position: fixed;
+            inset: 0;
+            opacity: .12;
+            background-image:
+              linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: linear-gradient(to bottom, black 40%, transparent 95%);
+          }
+
+          .loading-wrap {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+          }
+
+          .loading-card {
+            width: 100%;
+            max-width: 420px;
+            border-radius: 32px;
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(255,255,255,.03);
+            backdrop-filter: blur(18px);
+            padding: 42px 34px;
+            text-align: center;
+          }
+
+          .loading-spinner {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 24px;
+            border-radius: 999px;
+            border: 4px solid rgba(255,255,255,.08);
+            border-top-color: #7922F2;
+            border-right-color: #95FE59;
+            animation: spin 1s linear infinite;
+          }
+
+          .loading-title {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -.04em;
+            color: white;
+          }
+
+          .loading-sub {
+            margin-top: 12px;
+            color: rgba(255,255,255,.4);
+            font-size: 14px;
+            line-height: 1.7;
+          }
+
+          .loading-status {
+            margin-top: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(149,254,89,.18);
+            background: rgba(149,254,89,.08);
+            padding: 10px 16px;
+            color: #95FE59;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+          }
+
+          .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #95FE59;
+            box-shadow: 0 0 12px rgba(149,254,89,.9);
+            animation: pulse 1.4s infinite;
+          }
+
+          @keyframes spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+
+            50% {
+              opacity: .5;
+              transform: scale(.8);
+            }
+          }
+        `}</style>
+
+        <div className="loading-bg" />
+        <div className="loading-grid" />
+
+        <main className="loading-wrap">
+          <div className="loading-card">
+            <div className="loading-spinner" />
+
+            <h1 className="loading-title">Verificando acesso</h1>
+
+            <p className="loading-sub">
+              Validando permissões do usuário e carregando os sistemas disponíveis do painel.
+            </p>
+
+            <div className="loading-status">
+              <span className="loading-dot" />
+              carregando painel
+            </div>
+          </div>
+        </main>
+      </>
     );
   }
 
@@ -328,6 +488,25 @@ export default function AnnouncementsPage({
           font-weight: 900;
         }
 
+        .preview-avatar {
+          height: 44px;
+          width: 44px;
+          border-radius: 999px;
+          object-fit: cover;
+        }
+
+        .preview-avatar-fallback {
+          height: 44px;
+          width: 44px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #7922F2, #95FE59);
+          font-weight: 900;
+          color: black;
+        }
+
         .role-pill {
           display: inline-flex;
           align-items: center;
@@ -376,13 +555,7 @@ export default function AnnouncementsPage({
         <div className="relative z-10 mx-auto max-w-7xl">
           <div className="mb-8 flex items-center justify-between gap-5">
             <div className="bot-header">
-              {botAvatar ? (
-                <img src={botAvatar} alt={botName} className="bot-avatar" />
-              ) : (
-                <div className="bot-avatar-fallback">
-                  {botName?.[0]?.toUpperCase() ?? "?"}
-                </div>
-              )}
+              <BotAvatar name={botName} avatar={botAvatar} />
 
               <div>
                 <p className="mb-1 text-xs font-black uppercase tracking-[0.18em] text-[#95FE59]">
@@ -577,17 +750,11 @@ export default function AnnouncementsPage({
 
                 <div className="rounded-2xl bg-[#2B2D31] p-4">
                   <div className="mb-4 flex items-center gap-3">
-                    {botAvatar ? (
-                      <img
-                        src={botAvatar}
-                        alt={botName}
-                        className="h-11 w-11 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#7922F2] to-[#95FE59] font-black text-black">
-                        {botName?.[0]?.toUpperCase() ?? "N"}
-                      </div>
-                    )}
+                    <BotAvatar
+                      name={botName}
+                      avatar={botAvatar}
+                      className={botAvatar ? "preview-avatar" : "preview-avatar-fallback"}
+                    />
 
                     <div>
                       <div className="font-bold text-[#95FE59]">{botName}</div>
@@ -617,7 +784,7 @@ export default function AnnouncementsPage({
                         </div>
 
                         {imageUrl && (
-                          <img src={imageUrl} className="mt-4 rounded-xl" />
+                          <img src={imageUrl} className="mt-4 rounded-xl" alt="Imagem do anúncio" />
                         )}
 
                         {footer && (
@@ -634,7 +801,7 @@ export default function AnnouncementsPage({
                       </div>
 
                       {imageUrl && (
-                        <img src={imageUrl} className="mt-4 rounded-xl" />
+                        <img src={imageUrl} className="mt-4 rounded-xl" alt="Imagem da mensagem" />
                       )}
                     </div>
                   )}
