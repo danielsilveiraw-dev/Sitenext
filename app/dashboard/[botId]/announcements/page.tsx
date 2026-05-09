@@ -27,7 +27,15 @@ type BotInfo = {
   online?: boolean;
 };
 
-function BotAvatar({ name, avatar, className }: { name: string; avatar?: string | null; className?: string }) {
+function BotAvatar({
+  name,
+  avatar,
+  className,
+}: {
+  name: string;
+  avatar?: string | null;
+  className?: string;
+}) {
   const [error, setError] = useState(false);
 
   if (!avatar || error) {
@@ -66,7 +74,9 @@ export default function AnnouncementsPage({
 
   const [guildId, setGuildId] = useState("");
   const [channelId, setChannelId] = useState("");
+  const [messageId, setMessageId] = useState("");
 
+  const [actionMode, setActionMode] = useState<"create" | "edit">("create");
   const [mode, setMode] = useState<"embed" | "message">("embed");
 
   const [author, setAuthor] = useState("");
@@ -144,6 +154,15 @@ export default function AnnouncementsPage({
     access?.role === "ADMIN" ||
     access?.role === "EDITOR";
 
+  async function refreshLogs() {
+    const logsRes = await fetch(`/api/bots/${botId}/logs`);
+    const logsData = await logsRes.json();
+
+    if (Array.isArray(logsData)) {
+      setLogs(logsData);
+    }
+  }
+
   async function uploadImage(file: File) {
     if (file.size > 4 * 1024 * 1024) {
       alert("Envie uma imagem menor que 4MB");
@@ -177,63 +196,77 @@ export default function AnnouncementsPage({
     }
   }
 
-  async function sendAnnouncement() {
+  function validateForm() {
     if (!canSend) {
-      alert("Você não tem permissão para enviar anúncios.");
-      return;
+      alert("Você não tem permissão para gerenciar anúncios.");
+      return false;
     }
 
     if (!guildId || !channelId) {
       alert("Selecione servidor e canal");
-      return;
+      return false;
+    }
+
+    if (actionMode === "edit" && !messageId.trim()) {
+      alert("Informe o ID da mensagem que deseja editar");
+      return false;
     }
 
     if (mode === "embed" && !description.trim()) {
       alert("A descrição do embed é obrigatória");
-      return;
+      return false;
     }
 
-    if (mode === "message" && !messageContent.trim()) {
+    if (mode === "message" && !messageContent.trim() && !imageUrl) {
       alert("A mensagem é obrigatória");
-      return;
+      return false;
     }
+
+    return true;
+  }
+
+  function buildPayload() {
+    return mode === "embed"
+      ? {
+          botId,
+          guild_id: guildId,
+          channel_id: channelId,
+          message_id: messageId,
+          mode,
+          embed: {
+            author,
+            title,
+            description,
+            footer,
+            color,
+            image_url: imageUrl,
+          },
+        }
+      : {
+          botId,
+          guild_id: guildId,
+          channel_id: channelId,
+          message_id: messageId,
+          mode,
+          message: {
+            content: messageContent,
+            image_url: imageUrl,
+          },
+        };
+  }
+
+  async function sendAnnouncement() {
+    if (!validateForm()) return;
 
     setLoading(true);
 
     try {
-      const payload =
-        mode === "embed"
-          ? {
-              botId,
-              guild_id: guildId,
-              channel_id: channelId,
-              mode,
-              embed: {
-                author,
-                title,
-                description,
-                footer,
-                color,
-                image_url: imageUrl,
-              },
-            }
-          : {
-              botId,
-              guild_id: guildId,
-              channel_id: channelId,
-              mode,
-              message: {
-                content: messageContent,
-                image_url: imageUrl,
-              },
-            };
-
       const res = await fetch("/api/send-announcement", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(buildPayload()),
       });
 
       const data = await res.json();
@@ -243,14 +276,44 @@ export default function AnnouncementsPage({
         return;
       }
 
-      alert("Enviado com sucesso!");
+      alert("Anúncio enviado com sucesso!");
 
-      const logsRes = await fetch(`/api/bots/${botId}/logs`);
-      const logsData = await logsRes.json();
-
-      if (Array.isArray(logsData)) {
-        setLogs(logsData);
+      if (data.message_id) {
+        setMessageId(data.message_id);
       }
+
+      await refreshLogs();
+    } catch (err) {
+      console.error(err);
+      alert("Erro interno");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function editAnnouncement() {
+    if (!validateForm()) return;
+
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/edit-announcement", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(buildPayload()),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.detail || data.error || "Erro ao editar");
+        return;
+      }
+
+      alert("Mensagem editada com sucesso!");
+      await refreshLogs();
     } catch (err) {
       console.error(err);
       alert("Erro interno");
@@ -274,17 +337,17 @@ export default function AnnouncementsPage({
             position: fixed;
             inset: 0;
             background:
-              radial-gradient(circle at 10% 10%, rgba(121,34,242,.18), transparent 30%),
-              radial-gradient(circle at 90% 90%, rgba(149,254,89,.08), transparent 30%);
+              radial-gradient(circle at 10% 10%, rgba(121, 34, 242, 0.18), transparent 30%),
+              radial-gradient(circle at 90% 90%, rgba(149, 254, 89, 0.08), transparent 30%);
           }
 
           .loading-grid {
             position: fixed;
             inset: 0;
-            opacity: .12;
+            opacity: 0.12;
             background-image:
-              linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+              linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
             background-size: 60px 60px;
             mask-image: linear-gradient(to bottom, black 40%, transparent 95%);
           }
@@ -303,8 +366,8 @@ export default function AnnouncementsPage({
             width: 100%;
             max-width: 420px;
             border-radius: 32px;
-            border: 1px solid rgba(255,255,255,.08);
-            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(18px);
             padding: 42px 34px;
             text-align: center;
@@ -315,9 +378,9 @@ export default function AnnouncementsPage({
             height: 72px;
             margin: 0 auto 24px;
             border-radius: 999px;
-            border: 4px solid rgba(255,255,255,.08);
-            border-top-color: #7922F2;
-            border-right-color: #95FE59;
+            border: 4px solid rgba(255, 255, 255, 0.08);
+            border-top-color: #7922f2;
+            border-right-color: #95fe59;
             animation: spin 1s linear infinite;
           }
 
@@ -325,13 +388,13 @@ export default function AnnouncementsPage({
             margin: 0;
             font-size: 28px;
             font-weight: 900;
-            letter-spacing: -.04em;
+            letter-spacing: -0.04em;
             color: white;
           }
 
           .loading-sub {
             margin-top: 12px;
-            color: rgba(255,255,255,.4);
+            color: rgba(255, 255, 255, 0.4);
             font-size: 14px;
             line-height: 1.7;
           }
@@ -342,13 +405,13 @@ export default function AnnouncementsPage({
             align-items: center;
             gap: 10px;
             border-radius: 999px;
-            border: 1px solid rgba(149,254,89,.18);
-            background: rgba(149,254,89,.08);
+            border: 1px solid rgba(149, 254, 89, 0.18);
+            background: rgba(149, 254, 89, 0.08);
             padding: 10px 16px;
-            color: #95FE59;
+            color: #95fe59;
             font-size: 11px;
             font-weight: 900;
-            letter-spacing: .08em;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
           }
 
@@ -356,8 +419,8 @@ export default function AnnouncementsPage({
             width: 8px;
             height: 8px;
             border-radius: 999px;
-            background: #95FE59;
-            box-shadow: 0 0 12px rgba(149,254,89,.9);
+            background: #95fe59;
+            box-shadow: 0 0 12px rgba(149, 254, 89, 0.9);
             animation: pulse 1.4s infinite;
           }
 
@@ -368,14 +431,15 @@ export default function AnnouncementsPage({
           }
 
           @keyframes pulse {
-            0%, 100% {
+            0%,
+            100% {
               opacity: 1;
               transform: scale(1);
             }
 
             50% {
-              opacity: .5;
-              transform: scale(.8);
+              opacity: 0.5;
+              transform: scale(0.8);
             }
           }
         `}</style>
@@ -424,34 +488,44 @@ export default function AnnouncementsPage({
           position: fixed;
           inset: 0;
           background:
-            radial-gradient(ellipse 40% 30% at 0% 0%, rgba(121,34,242,.18), transparent),
-            radial-gradient(ellipse 30% 20% at 100% 100%, rgba(149,254,89,.08), transparent);
+            radial-gradient(ellipse 40% 30% at 0% 0%, rgba(121, 34, 242, 0.18), transparent),
+            radial-gradient(ellipse 30% 20% at 100% 100%, rgba(149, 254, 89, 0.08), transparent);
           pointer-events: none;
         }
 
         .card {
-          background: rgba(255,255,255,.03);
-          border: 1px solid rgba(255,255,255,.07);
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.07);
           backdrop-filter: blur(14px);
         }
 
         .field {
-          transition: .2s;
+          transition: 0.2s;
         }
 
         .field:focus {
           outline: none;
-          border-color: #7922F2;
-          box-shadow: 0 0 0 3px rgba(121,34,242,.18);
+          border-color: #7922f2;
+          box-shadow: 0 0 0 3px rgba(121, 34, 242, 0.18);
         }
 
         .btn {
-          background: linear-gradient(90deg, #7922F2, #95FE59);
-          transition: .2s;
+          background: linear-gradient(90deg, #7922f2, #95fe59);
+          transition: 0.2s;
         }
 
         .btn:hover {
-          opacity: .92;
+          opacity: 0.92;
+          transform: translateY(-1px);
+        }
+
+        .edit-btn {
+          background: linear-gradient(90deg, #95fe59, #7922f2);
+          transition: 0.2s;
+        }
+
+        .edit-btn:hover {
+          opacity: 0.92;
           transform: translateY(-1px);
         }
 
@@ -471,8 +545,8 @@ export default function AnnouncementsPage({
           height: 64px;
           border-radius: 22px;
           object-fit: cover;
-          background: linear-gradient(135deg, rgba(121,34,242,.35), rgba(149,254,89,.18));
-          border: 1px solid rgba(255,255,255,.1);
+          background: linear-gradient(135deg, rgba(121, 34, 242, 0.35), rgba(149, 254, 89, 0.18));
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .bot-avatar-fallback {
@@ -482,8 +556,8 @@ export default function AnnouncementsPage({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, rgba(121,34,242,.35), rgba(149,254,89,.18));
-          border: 1px solid rgba(255,255,255,.1);
+          background: linear-gradient(135deg, rgba(121, 34, 242, 0.35), rgba(149, 254, 89, 0.18));
+          border: 1px solid rgba(255, 255, 255, 0.1);
           font-size: 26px;
           font-weight: 900;
         }
@@ -502,7 +576,7 @@ export default function AnnouncementsPage({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #7922F2, #95FE59);
+          background: linear-gradient(135deg, #7922f2, #95fe59);
           font-weight: 900;
           color: black;
         }
@@ -513,37 +587,37 @@ export default function AnnouncementsPage({
           gap: 7px;
           width: fit-content;
           margin-top: 10px;
-          border: 1px solid rgba(149,254,89,.16);
-          background: rgba(149,254,89,.08);
-          color: #95FE59;
+          border: 1px solid rgba(149, 254, 89, 0.16);
+          background: rgba(149, 254, 89, 0.08);
+          color: #95fe59;
           border-radius: 999px;
           padding: 7px 12px;
           font-size: 11px;
           font-weight: 900;
-          letter-spacing: .08em;
+          letter-spacing: 0.08em;
         }
 
         .role-dot {
           width: 7px;
           height: 7px;
           border-radius: 999px;
-          background: #95FE59;
-          box-shadow: 0 0 10px rgba(149,254,89,.8);
+          background: #95fe59;
+          box-shadow: 0 0 10px rgba(149, 254, 89, 0.8);
         }
 
         .back-btn {
           border-radius: 999px;
-          border: 1px solid rgba(255,255,255,.1);
-          background: rgba(255,255,255,.045);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.045);
           padding: 12px 18px;
           font-weight: 800;
-          color: rgba(255,255,255,.72);
-          transition: .2s;
+          color: rgba(255, 255, 255, 0.72);
+          transition: 0.2s;
         }
 
         .back-btn:hover {
-          background: rgba(121,34,242,.1);
-          border-color: rgba(121,34,242,.35);
+          background: rgba(121, 34, 242, 0.1);
+          border-color: rgba(121, 34, 242, 0.35);
           color: white;
           transform: translateY(-1px);
         }
@@ -562,9 +636,7 @@ export default function AnnouncementsPage({
                   Anúncios
                 </p>
 
-                <h1 className="text-4xl font-black leading-none">
-                  {botName}
-                </h1>
+                <h1 className="text-4xl font-black leading-none">{botName}</h1>
 
                 <div className="role-pill">
                   <span className="role-dot" />
@@ -580,11 +652,48 @@ export default function AnnouncementsPage({
 
           <div className="grid gap-6 lg:grid-cols-[1fr_430px]">
             <div className="card rounded-3xl p-7">
-              <h2 className="mb-6 text-2xl font-black">Criar anúncio</h2>
+              <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-black">
+                    {actionMode === "create"
+                      ? "Criar anúncio"
+                      : "Editar mensagem"}
+                  </h2>
+                  <p className="mt-1 text-sm text-white/40">
+                    {actionMode === "create"
+                      ? "Envie uma nova mensagem para um canal."
+                      : "Edite uma mensagem existente usando o ID dela."}
+                  </p>
+                </div>
+
+                <div className="flex rounded-2xl border border-white/10 bg-white/5 p-1">
+                  <button
+                    onClick={() => setActionMode("create")}
+                    className={`rounded-xl px-4 py-2 text-sm font-black transition ${
+                      actionMode === "create"
+                        ? "bg-[#7922F2] text-white"
+                        : "text-white/50"
+                    }`}
+                  >
+                    Criar
+                  </button>
+
+                  <button
+                    onClick={() => setActionMode("edit")}
+                    className={`rounded-xl px-4 py-2 text-sm font-black transition ${
+                      actionMode === "edit"
+                        ? "bg-[#95FE59] text-black"
+                        : "text-white/50"
+                    }`}
+                  >
+                    Editar
+                  </button>
+                </div>
+              </div>
 
               {!canSend && (
                 <div className="mb-5 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200">
-                  Você está como VIEWER. Pode visualizar, mas não pode enviar anúncios.
+                  Você está como VIEWER. Pode visualizar, mas não pode enviar ou editar anúncios.
                 </div>
               )}
 
@@ -624,9 +733,26 @@ export default function AnnouncementsPage({
                 </select>
               </div>
 
+              {actionMode === "edit" && (
+                <div className="mb-5">
+                  <label className="mb-2 block text-sm text-white/50">
+                    ID da mensagem
+                  </label>
+                  <input
+                    value={messageId}
+                    onChange={(e) => setMessageId(e.target.value)}
+                    placeholder="Ex: 1234567890123456789"
+                    className="field w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-white placeholder:text-white/20"
+                  />
+                  <p className="mt-2 text-xs text-white/35">
+                    Ative o modo desenvolvedor no Discord, clique com botão direito na mensagem e copie o ID.
+                  </p>
+                </div>
+              )}
+
               <div className="mb-7">
                 <label className="mb-3 block text-sm text-white/50">
-                  Tipo de envio
+                  Tipo de mensagem
                 </label>
 
                 <div className="flex gap-3">
@@ -732,15 +858,23 @@ export default function AnnouncementsPage({
               </div>
 
               <button
-                onClick={sendAnnouncement}
+                onClick={
+                  actionMode === "create" ? sendAnnouncement : editAnnouncement
+                }
                 disabled={loading || uploading || !canSend}
-                className="btn mt-8 w-full rounded-2xl py-5 text-lg font-black text-black disabled:opacity-40"
+                className={`mt-8 w-full rounded-2xl py-5 text-lg font-black text-black disabled:opacity-40 ${
+                  actionMode === "create" ? "btn" : "edit-btn"
+                }`}
               >
                 {!canSend
-                  ? "Sem permissão para enviar"
+                  ? "Sem permissão"
                   : loading
-                    ? "Enviando..."
-                    : "Enviar anúncio"}
+                    ? actionMode === "create"
+                      ? "Enviando..."
+                      : "Editando..."
+                    : actionMode === "create"
+                      ? "Enviar anúncio"
+                      : "Editar mensagem"}
               </button>
             </div>
 
@@ -753,18 +887,27 @@ export default function AnnouncementsPage({
                     <BotAvatar
                       name={botName}
                       avatar={botAvatar}
-                      className={botAvatar ? "preview-avatar" : "preview-avatar-fallback"}
+                      className={
+                        botAvatar
+                          ? "preview-avatar"
+                          : "preview-avatar-fallback"
+                      }
                     />
 
                     <div>
                       <div className="font-bold text-[#95FE59]">{botName}</div>
-                      <div className="text-xs text-white/30">BOT • Agora</div>
+                      <div className="text-xs text-white/30">
+                        BOT • {actionMode === "create" ? "Agora" : "Editando"}
+                      </div>
                     </div>
                   </div>
 
                   {mode === "embed" ? (
                     <div className="flex overflow-hidden rounded-xl bg-[#1E1F22]">
-                      <div style={{ background: color }} className="w-1 shrink-0" />
+                      <div
+                        style={{ background: color }}
+                        className="w-1 shrink-0"
+                      />
 
                       <div className="p-4">
                         {author && (
@@ -774,9 +917,7 @@ export default function AnnouncementsPage({
                         )}
 
                         {title && (
-                          <div className="mb-2 text-lg font-black">
-                            {title}
-                          </div>
+                          <div className="mb-2 text-lg font-black">{title}</div>
                         )}
 
                         <div className="whitespace-pre-wrap text-sm text-white/70">
@@ -784,7 +925,11 @@ export default function AnnouncementsPage({
                         </div>
 
                         {imageUrl && (
-                          <img src={imageUrl} className="mt-4 rounded-xl" alt="Imagem do anúncio" />
+                          <img
+                            src={imageUrl}
+                            className="mt-4 rounded-xl"
+                            alt="Imagem do anúncio"
+                          />
                         )}
 
                         {footer && (
@@ -801,7 +946,11 @@ export default function AnnouncementsPage({
                       </div>
 
                       {imageUrl && (
-                        <img src={imageUrl} className="mt-4 rounded-xl" alt="Imagem da mensagem" />
+                        <img
+                          src={imageUrl}
+                          className="mt-4 rounded-xl"
+                          alt="Imagem da mensagem"
+                        />
                       )}
                     </div>
                   )}
