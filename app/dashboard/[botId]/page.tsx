@@ -198,38 +198,6 @@ export default function BotDashboard({
           transform: translateY(-1px);
         }
 
-        .divider {
-          color: rgba(255, 255, 255, 0.16);
-        }
-
-        .brand {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
-        }
-
-        .brand img {
-          height: 34px;
-          width: auto;
-          object-fit: contain;
-        }
-
-        .brand-title {
-          font-size: 13px;
-          font-weight: 900;
-          letter-spacing: 0.14em;
-          line-height: 1;
-        }
-
-        .brand-sub {
-          margin-top: 4px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.32);
-          letter-spacing: 0.08em;
-        }
-
         .id-pill {
           max-width: 280px;
           overflow: hidden;
@@ -578,14 +546,6 @@ export default function BotDashboard({
             flex-direction: column;
           }
 
-          .top-left {
-            flex-wrap: wrap;
-          }
-
-          .divider {
-            display: none;
-          }
-
           .id-pill {
             max-width: 100%;
           }
@@ -629,19 +589,6 @@ export default function BotDashboard({
                 <span>←</span>
                 <span>Meus Bots</span>
               </Link>
-
-              <span className="divider">/</span>
-
-              <div className="brand">
-                <img src="/logo.png" alt="Logo" />
-
-                <div>
-                  <p className="brand-title">
-                    NEXT<span style={{ color: "#95FE59" }}>DEVS</span>
-                  </p>
-                  <p className="brand-sub">BOT DASHBOARD</p>
-                </div>
-              </div>
             </div>
 
             <div className="id-pill">ID: {botId || "carregando..."}</div>
