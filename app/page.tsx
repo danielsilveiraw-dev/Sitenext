@@ -139,10 +139,10 @@ export default function LandingPage() {
 
         /* ── Hero ── */
         .hero {
-          min-height: 100vh;
+          min-height: auto;
           max-width: 1180px;
           margin: 0 auto;
-          padding: 70px 32px 50px;
+          padding: 140px 32px 60px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -647,10 +647,6 @@ export default function LandingPage() {
 
         {/* ── Hero ── */}
         <section className="hero">
-          <div className="hero-brand">
-            <img src="/logo.png" alt="NextDevs" />
-          </div>
-
           <div className="hero-tag">
             <span className="hero-tag-dot" />
             PAINEL DE GERENCIAMENTO DISCORD
