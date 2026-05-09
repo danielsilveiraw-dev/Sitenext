@@ -117,8 +117,7 @@ export default function DashboardPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          max-width: 1280px;
-          margin: 0 auto;
+          width: 100%;
         }
 
         .dash-logo {
@@ -146,16 +145,16 @@ export default function DashboardPage() {
         .section-wrap {
           position: relative;
           z-index: 10;
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 40px 40px 80px;
+          width: 100%;
+          padding: 48px 40px 80px;
         }
 
         .section-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 32px;
+          margin-bottom: 28px;
+          gap: 16px;
         }
 
         .section-label {
@@ -204,8 +203,8 @@ export default function DashboardPage() {
         /* ── Grid ── */
         .bots-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 18px;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 340px));
+          gap: 20px;
         }
 
         /* ── Bot card ── */
@@ -367,7 +366,7 @@ export default function DashboardPage() {
           align-items: center;
           justify-content: center;
           gap: 10px;
-          min-height: 168px;
+          min-height: 190px;
           cursor: pointer;
           transition: border-color 0.2s, background 0.2s, transform 0.2s;
         }
