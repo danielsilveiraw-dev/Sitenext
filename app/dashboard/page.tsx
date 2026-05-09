@@ -136,14 +136,14 @@ export default function DashboardPage() {
         .dash-header {
           position: relative;
           z-index: 10;
-          padding: 30px 24px 0;
+          padding: 34px 24px 0;
           display: flex;
           justify-content: center;
           width: 100%;
         }
 
         .dash-logo {
-          height: 46px;
+          height: 48px;
           width: auto;
           object-fit: contain;
           opacity: 0.95;
@@ -154,7 +154,7 @@ export default function DashboardPage() {
           z-index: 10;
           width: 100%;
           min-height: calc(100vh - 80px);
-          padding: 34px 24px 70px;
+          padding: 58px 32px 90px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -162,12 +162,12 @@ export default function DashboardPage() {
 
         .section-header {
           width: 100%;
-          max-width: 1120px;
+          max-width: 1180px;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
-          margin-bottom: 28px;
+          margin-bottom: 46px;
         }
 
         .section-tag {
@@ -177,19 +177,19 @@ export default function DashboardPage() {
           letter-spacing: 0.16em;
           text-transform: uppercase;
           text-shadow: 0 0 16px rgba(149, 254, 89, 0.3);
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
 
         .section-title-row {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 12px;
+          gap: 14px;
           flex-wrap: wrap;
         }
 
         .section-title {
-          font-size: 30px;
+          font-size: 34px;
           font-weight: 800;
           letter-spacing: -0.04em;
           line-height: 1;
@@ -201,7 +201,7 @@ export default function DashboardPage() {
           gap: 7px;
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 999px;
-          padding: 8px 14px;
+          padding: 9px 15px;
           font-family: 'JetBrains Mono', monospace;
           font-size: 10px;
           color: rgba(255, 255, 255, 0.45);
@@ -217,27 +217,27 @@ export default function DashboardPage() {
         }
 
         .section-subtitle {
-          margin-top: 12px;
-          max-width: 520px;
-          font-size: 13px;
-          line-height: 1.6;
+          margin-top: 16px;
+          max-width: 560px;
+          font-size: 14px;
+          line-height: 1.7;
           color: rgba(255, 255, 255, 0.38);
         }
 
         .bots-grid {
           width: 100%;
-          max-width: 1120px;
+          max-width: 1260px;
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
+          grid-template-columns: repeat(auto-fit, minmax(340px, 380px));
           justify-content: center;
-          gap: 18px;
+          gap: 26px;
         }
 
         .bot-card {
           background: rgba(255, 255, 255, 0.025);
           border: 1px solid rgba(255, 255, 255, 0.07);
-          border-radius: 22px;
-          padding: 22px;
+          border-radius: 28px;
+          padding: 28px;
           backdrop-filter: blur(14px);
           transition: border-color 0.2s, transform 0.2s;
           will-change: transform;
@@ -269,8 +269,8 @@ export default function DashboardPage() {
         .bot-card-top {
           display: flex;
           align-items: center;
-          gap: 14px;
-          margin-bottom: 18px;
+          gap: 18px;
+          margin-bottom: 26px;
         }
 
         .bot-avatar {
@@ -280,8 +280,8 @@ export default function DashboardPage() {
 
         .bot-avatar img,
         .bot-avatar-fallback {
-          width: 54px;
-          height: 54px;
+          width: 64px;
+          height: 64px;
           border-radius: 50%;
           object-fit: cover;
         }
@@ -292,17 +292,17 @@ export default function DashboardPage() {
           justify-content: center;
           background: rgba(121, 34, 242, 0.25);
           border: 1px solid rgba(121, 34, 242, 0.3);
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 800;
           color: #fff;
         }
 
         .bot-status-dot {
           position: absolute;
-          bottom: 2px;
-          right: 2px;
-          width: 13px;
-          height: 13px;
+          bottom: 3px;
+          right: 3px;
+          width: 14px;
+          height: 14px;
           border-radius: 999px;
           border: 2px solid #050505;
         }
@@ -322,12 +322,12 @@ export default function DashboardPage() {
         }
 
         .bot-name {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 700;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
         }
 
         .bot-status-label {
@@ -348,7 +348,7 @@ export default function DashboardPage() {
           font-family: 'JetBrains Mono', monospace;
           font-size: 10px;
           color: rgba(255, 255, 255, 0.25);
-          margin-top: 2px;
+          margin-top: 4px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -356,19 +356,20 @@ export default function DashboardPage() {
 
         .bot-actions {
           display: flex;
-          gap: 10px;
+          gap: 12px;
         }
 
         .btn-open {
           flex: 1;
+          min-height: 48px;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          padding: 11px 16px;
-          border-radius: 14px;
+          padding: 12px 16px;
+          border-radius: 16px;
           font-size: 13px;
-          font-weight: 700;
+          font-weight: 800;
           text-decoration: none;
           color: #000;
           background: linear-gradient(135deg, #7922f2, #9b45f5);
@@ -383,31 +384,33 @@ export default function DashboardPage() {
         }
 
         .btn-remove {
-          padding: 11px 14px;
-          border-radius: 14px;
+          min-height: 48px;
+          padding: 12px 15px;
+          border-radius: 16px;
           font-size: 13px;
-          font-weight: 700;
+          font-weight: 800;
           color: #f87171;
           background: rgba(248, 113, 113, 0.08);
           border: 1px solid rgba(248, 113, 113, 0.2);
           cursor: pointer;
-          transition: background 0.2s;
+          transition: background 0.2s, transform 0.2s;
         }
 
         .btn-remove:hover {
           background: rgba(248, 113, 113, 0.16);
+          transform: translateY(-1px);
         }
 
         .bot-card-add {
           background: rgba(255, 255, 255, 0.015);
           border: 1px dashed rgba(255, 255, 255, 0.1);
-          border-radius: 22px;
+          border-radius: 28px;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 10px;
-          min-height: 176px;
+          gap: 12px;
+          min-height: 218px;
           cursor: pointer;
           transition: border-color 0.2s, background 0.2s, transform 0.2s;
         }
@@ -419,61 +422,61 @@ export default function DashboardPage() {
         }
 
         .add-icon {
-          width: 44px;
-          height: 44px;
+          width: 52px;
+          height: 52px;
           border-radius: 999px;
           display: flex;
           align-items: center;
           justify-content: center;
           background: rgba(121, 34, 242, 0.12);
           border: 1px solid rgba(121, 34, 242, 0.2);
-          font-size: 22px;
+          font-size: 26px;
           color: #b47cff;
           line-height: 1;
         }
 
         .add-label {
-          font-size: 13px;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.35);
+          font-size: 14px;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.42);
         }
 
         .empty-card {
           width: 100%;
-          max-width: 620px;
-          margin-top: 24px;
+          max-width: 680px;
+          margin-top: 10px;
           background: rgba(255, 255, 255, 0.025);
           border: 1px solid rgba(255, 255, 255, 0.07);
-          border-radius: 28px;
-          padding: 58px 34px;
+          border-radius: 32px;
+          padding: 68px 40px;
           text-align: center;
           backdrop-filter: blur(14px);
         }
 
         .empty-icon {
-          width: 70px;
-          height: 70px;
-          margin: 0 auto 18px;
+          width: 76px;
+          height: 76px;
+          margin: 0 auto 22px;
           display: flex;
           align-items: center;
           justify-content: center;
           border-radius: 999px;
           background: rgba(121, 34, 242, 0.15);
           border: 1px solid rgba(121, 34, 242, 0.2);
-          font-size: 32px;
+          font-size: 34px;
         }
 
         .empty-title {
-          font-size: 22px;
+          font-size: 24px;
           font-weight: 800;
           letter-spacing: -0.03em;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
 
         .empty-sub {
           color: rgba(255, 255, 255, 0.4);
           font-size: 14px;
-          margin-bottom: 28px;
+          margin-bottom: 32px;
           line-height: 1.7;
         }
 
@@ -481,10 +484,10 @@ export default function DashboardPage() {
           display: inline-flex;
           align-items: center;
           gap: 10px;
-          padding: 14px 28px;
-          border-radius: 16px;
+          padding: 15px 30px;
+          border-radius: 17px;
           font-size: 14px;
-          font-weight: 700;
+          font-weight: 800;
           color: #000;
           background: linear-gradient(135deg, #7922f2, #9b45f5);
           border: none;
@@ -617,20 +620,40 @@ export default function DashboardPage() {
           }
 
           .section-wrap {
-            padding: 28px 18px 56px;
+            padding: 42px 18px 64px;
+          }
+
+          .section-header {
+            margin-bottom: 34px;
           }
 
           .section-title {
-            font-size: 26px;
+            font-size: 28px;
+          }
+
+          .section-subtitle {
+            font-size: 13px;
           }
 
           .bots-grid {
             grid-template-columns: 1fr;
-            max-width: 380px;
+            max-width: 400px;
+            gap: 20px;
+          }
+
+          .bot-card {
+            padding: 24px;
+            border-radius: 24px;
+          }
+
+          .bot-avatar img,
+          .bot-avatar-fallback {
+            width: 58px;
+            height: 58px;
           }
 
           .empty-card {
-            padding: 46px 24px;
+            padding: 50px 24px;
           }
 
           .modal-actions {
@@ -652,7 +675,9 @@ export default function DashboardPage() {
 
           <div className="section-title-row">
             <h2 className="section-title">
-              {bots.length === 0 ? "Conecte seu primeiro bot" : "Bots conectados"}
+              {bots.length === 0
+                ? "Conecte seu primeiro bot"
+                : "Bots conectados"}
             </h2>
 
             {bots.length > 0 && (
@@ -664,7 +689,8 @@ export default function DashboardPage() {
           </div>
 
           <p className="section-subtitle">
-            Gerencie seus bots conectados ao painel de forma simples, rápida e organizada.
+            Gerencie seus bots conectados ao painel de forma simples, rápida e
+            organizada.
           </p>
         </div>
 
