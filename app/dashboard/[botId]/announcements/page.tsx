@@ -20,12 +20,20 @@ type Log = {
   };
 };
 
+type BotInfo = {
+  id: string;
+  name: string;
+  avatar: string | null;
+  online?: boolean;
+};
+
 export default function AnnouncementsPage({
   params,
 }: {
   params: Promise<{ botId: string }>;
 }) {
   const [botId, setBotId] = useState("");
+  const [botInfo, setBotInfo] = useState<BotInfo | null>(null);
 
   const [access, setAccess] = useState<Access | null>(null);
   const [checkingAccess, setCheckingAccess] = useState(true);
@@ -68,6 +76,16 @@ export default function AnnouncementsPage({
       setAccess(accessData);
       setCheckingAccess(false);
 
+      fetch("/api/my-bots")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            const currentBot = data.find((bot: BotInfo) => bot.id === resolved.botId);
+            if (currentBot) setBotInfo(currentBot);
+          }
+        })
+        .catch(console.error);
+
       fetch("/api/guilds/filtered")
         .then((res) => res.json())
         .then((data) => {
@@ -102,38 +120,39 @@ export default function AnnouncementsPage({
     access?.role === "ADMIN" ||
     access?.role === "EDITOR";
 
-async function uploadImage(file: File) {
-  if (file.size > 4 * 1024 * 1024) {
-    alert("Envie uma imagem menor que 4MB");
-    return;
-  }
-
-  setUploading(true);
-
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data.error || "Erro ao enviar imagem");
+  async function uploadImage(file: File) {
+    if (file.size > 4 * 1024 * 1024) {
+      alert("Envie uma imagem menor que 4MB");
       return;
     }
 
-    setImageUrl(data.url);
-  } catch (err) {
-    console.error(err);
-    alert("Erro no upload");
-  } finally {
-    setUploading(false);
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Erro ao enviar imagem");
+        return;
+      }
+
+      setImageUrl(data.url);
+    } catch (err) {
+      console.error(err);
+      alert("Erro no upload");
+    } finally {
+      setUploading(false);
+    }
   }
-}
+
   async function sendAnnouncement() {
     if (!canSend) {
       alert("Você não tem permissão para enviar anúncios.");
@@ -224,6 +243,9 @@ async function uploadImage(file: File) {
     );
   }
 
+  const botName = botInfo?.name || "Bot do painel";
+  const botAvatar = botInfo?.avatar;
+
   return (
     <>
       <style jsx global>{`
@@ -277,32 +299,115 @@ async function uploadImage(file: File) {
           background: #111;
           color: white;
         }
+
+        .bot-header {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .bot-avatar {
+          width: 64px;
+          height: 64px;
+          border-radius: 22px;
+          object-fit: cover;
+          background: linear-gradient(135deg, rgba(121,34,242,.35), rgba(149,254,89,.18));
+          border: 1px solid rgba(255,255,255,.1);
+        }
+
+        .bot-avatar-fallback {
+          width: 64px;
+          height: 64px;
+          border-radius: 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, rgba(121,34,242,.35), rgba(149,254,89,.18));
+          border: 1px solid rgba(255,255,255,.1);
+          font-size: 26px;
+          font-weight: 900;
+        }
+
+        .role-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          width: fit-content;
+          margin-top: 10px;
+          border: 1px solid rgba(149,254,89,.16);
+          background: rgba(149,254,89,.08);
+          color: #95FE59;
+          border-radius: 999px;
+          padding: 7px 12px;
+          font-size: 11px;
+          font-weight: 900;
+          letter-spacing: .08em;
+        }
+
+        .role-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: #95FE59;
+          box-shadow: 0 0 10px rgba(149,254,89,.8);
+        }
+
+        .back-btn {
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,.1);
+          background: rgba(255,255,255,.045);
+          padding: 12px 18px;
+          font-weight: 800;
+          color: rgba(255,255,255,.72);
+          transition: .2s;
+        }
+
+        .back-btn:hover {
+          background: rgba(121,34,242,.1);
+          border-color: rgba(121,34,242,.35);
+          color: white;
+          transform: translateY(-1px);
+        }
       `}</style>
 
       <main className="relative min-h-screen p-8">
         <div className="bgfx" />
 
         <div className="relative z-10 mx-auto max-w-7xl">
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-black">Anúncios</h1>
-              <p className="mt-2 text-white/40">Bot ID: {botId}</p>
-              <p className="mt-1 text-sm text-white/30">
-                Permissão: {access?.role}
-              </p>
+          <div className="mb-8 flex items-center justify-between gap-5">
+            <div className="bot-header">
+              {botAvatar ? (
+                <img src={botAvatar} alt={botName} className="bot-avatar" />
+              ) : (
+                <div className="bot-avatar-fallback">
+                  {botName?.[0]?.toUpperCase() ?? "?"}
+                </div>
+              )}
+
+              <div>
+                <p className="mb-1 text-xs font-black uppercase tracking-[0.18em] text-[#95FE59]">
+                  Anúncios
+                </p>
+
+                <h1 className="text-4xl font-black leading-none">
+                  {botName}
+                </h1>
+
+                <div className="role-pill">
+                  <span className="role-dot" />
+                  Permissão: {access?.role}
+                </div>
+              </div>
             </div>
 
-            <a
-              href={`/dashboard/${botId}`}
-              className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 font-bold text-white/70 transition hover:bg-white/10"
-            >
+            <a href={`/dashboard/${botId}`} className="back-btn">
               ← Voltar
             </a>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[1fr_430px]">
             <div className="card rounded-3xl p-7">
-              <h2 className="mb-6 text-2xl font-black">Criar envio</h2>
+              <h2 className="mb-6 text-2xl font-black">Criar anúncio</h2>
 
               {!canSend && (
                 <div className="mb-5 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200">
@@ -462,7 +567,7 @@ async function uploadImage(file: File) {
                   ? "Sem permissão para enviar"
                   : loading
                     ? "Enviando..."
-                    : "Enviar"}
+                    : "Enviar anúncio"}
               </button>
             </div>
 
@@ -472,19 +577,27 @@ async function uploadImage(file: File) {
 
                 <div className="rounded-2xl bg-[#2B2D31] p-4">
                   <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#7922F2] to-[#95FE59] font-black text-black">
-                      N
-                    </div>
+                    {botAvatar ? (
+                      <img
+                        src={botAvatar}
+                        alt={botName}
+                        className="h-11 w-11 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#7922F2] to-[#95FE59] font-black text-black">
+                        {botName?.[0]?.toUpperCase() ?? "N"}
+                      </div>
+                    )}
 
                     <div>
-                      <div className="font-bold text-[#95FE59]">Next Devs</div>
+                      <div className="font-bold text-[#95FE59]">{botName}</div>
                       <div className="text-xs text-white/30">BOT • Agora</div>
                     </div>
                   </div>
 
                   {mode === "embed" ? (
-                   <div className="flex overflow-hidden rounded-xl bg-[#1E1F22]">
-                    <div style={{ background: color }} className="w-1 shrink-0" />
+                    <div className="flex overflow-hidden rounded-xl bg-[#1E1F22]">
+                      <div style={{ background: color }} className="w-1 shrink-0" />
 
                       <div className="p-4">
                         {author && (
