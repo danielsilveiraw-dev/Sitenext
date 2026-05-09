@@ -37,6 +37,8 @@ model Bot {
   accesses  BotAccess[]
   logs      PanelLog[]
 
+  lastHeartbeat DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

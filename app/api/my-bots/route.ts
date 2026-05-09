@@ -23,6 +23,8 @@ async function getUser() {
   }
 }
 
+const HEARTBEAT_TIMEOUT_MS = 30_000;
+
 export async function GET() {
   try {
     const session = await getUser();
@@ -67,7 +69,14 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(bots);
+    const botsWithStatus = bots.map((bot) => ({
+      ...bot,
+      online:
+        bot.lastHeartbeat != null &&
+        Date.now() - new Date(bot.lastHeartbeat).getTime() < HEARTBEAT_TIMEOUT_MS,
+    }));
+
+    return NextResponse.json(botsWithStatus);
   } catch (err) {
     console.error("[my-bots]", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
