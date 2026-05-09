@@ -48,7 +48,6 @@ export default function DashboardPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer Daniel9907!",
         },
         body: JSON.stringify({
           code,
