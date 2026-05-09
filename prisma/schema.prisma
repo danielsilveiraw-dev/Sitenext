@@ -30,6 +30,7 @@ model Bot {
   id        String   @id
   name      String
   avatar    String?
+  apiUrl    String?
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

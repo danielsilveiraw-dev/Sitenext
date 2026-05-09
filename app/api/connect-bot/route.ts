@@ -13,9 +13,7 @@ type SessionUser = {
 async function getUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
-
   if (!token) return null;
-
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as SessionUser;
   } catch {
@@ -26,42 +24,17 @@ async function getUser() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getUser();
-
     if (!session?.id) {
-      return NextResponse.json(
-        { error: "Não autenticado" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
     const body = await req.json();
-
-    const botApiUrl = String(body.botApiUrl || "").replace(/\/$/, "");
     const code = String(body.code || "").trim().toUpperCase();
-
-    console.log("\n==============================");
-    console.log("🌐 NOVA TENTATIVA DE CONEXÃO");
-    console.log("👤 Usuário:", session.id);
-    console.log("🔗 URL recebida:", botApiUrl);
-    console.log("📌 Código recebido:", code);
-    console.log(
-      "🚀 Endpoint final:",
-      `${botApiUrl}/connect-code`
-    );
-    console.log("==============================\n");
-
-    if (!botApiUrl) {
-      return NextResponse.json(
-        { error: "URL da API do bot obrigatória" },
-        { status: 400 }
-      );
-    }
+    // botApiUrl ainda aceito como fallback manual
+    const botApiUrlManual = String(body.botApiUrl || "").replace(/\/$/, "");
 
     if (!code) {
-      return NextResponse.json(
-        { error: "Código de conexão obrigatório" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Código obrigatório" }, { status: 400 });
     }
 
     await prisma.user.upsert({
@@ -77,105 +50,88 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    console.log("📡 Enviando requisição para API do bot...");
-
-    const botRes = await fetch(`${botApiUrl}/connect-code`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.BOT_API_SECRET}`,
-      },
-      body: JSON.stringify({ code }),
+    // Tenta todos os bots que têm apiUrl salva no banco
+    const botsWithUrl = await prisma.bot.findMany({
+      where: { apiUrl: { not: null } },
+      select: { id: true, apiUrl: true },
     });
 
-    console.log("📥 Status recebido da API:", botRes.status);
+    // Adiciona URL manual se fornecida
+    const urlsToTry: string[] = [];
+    if (botApiUrlManual) urlsToTry.push(botApiUrlManual);
+    for (const b of botsWithUrl) {
+      if (b.apiUrl && !urlsToTry.includes(b.apiUrl)) {
+        urlsToTry.push(b.apiUrl);
+      }
+    }
 
-    let data: any = null;
-
-    try {
-      data = await botRes.json();
-
-      console.log("📦 Resposta da API:");
-      console.log(data);
-    } catch (err) {
-      console.log("❌ API do bot não retornou JSON válido");
-      console.log(err);
-
+    if (urlsToTry.length === 0) {
       return NextResponse.json(
-        { error: "A API do bot não retornou JSON válido" },
-        { status: 502 }
+        { error: "Nenhuma API de bot disponível. Certifique-se que o bot está online." },
+        { status: 400 }
       );
     }
 
-    if (!botRes.ok) {
-      console.log("❌ API retornou erro");
-      console.log(data);
+    // Tenta cada URL até encontrar o código
+    let successData: any = null;
+    let successUrl: string = "";
 
-      return NextResponse.json(data, {
-        status: botRes.status,
-      });
+    for (const url of urlsToTry) {
+      try {
+        const botRes = await fetch(`${url}/connect-code`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.BOT_API_SECRET}`,
+          },
+          body: JSON.stringify({ code }),
+        });
+
+        if (botRes.ok) {
+          const data = await botRes.json();
+          if (data?.bot?.id && data?.bot?.name) {
+            successData = data;
+            successUrl = url;
+            break;
+          }
+        }
+      } catch {
+        // continua tentando próxima URL
+      }
     }
 
-    if (!data?.bot?.id || !data?.bot?.name) {
-      console.log("❌ Resposta inesperada da API");
-      console.log(data);
-
+    if (!successData) {
       return NextResponse.json(
-        { error: "Resposta inesperada da API do bot" },
-        { status: 502 }
+        { error: "Código inválido ou expirado" },
+        { status: 404 }
       );
     }
-
-    console.log("✅ Bot validado:");
-    console.log("🤖 Nome:", data.bot.name);
-    console.log("🆔 ID:", data.bot.id);
 
     const bot = await prisma.bot.upsert({
-      where: {
-        id: String(data.bot.id),
-      },
+      where: { id: String(successData.bot.id) },
       update: {
-        name: data.bot.name,
-        avatar: data.bot.avatar ?? null,
+        name: successData.bot.name,
+        avatar: successData.bot.avatar ?? null,
+        apiUrl: successUrl,
       },
       create: {
-        id: String(data.bot.id),
-        name: data.bot.name,
-        avatar: data.bot.avatar ?? null,
+        id: String(successData.bot.id),
+        name: successData.bot.name,
+        avatar: successData.bot.avatar ?? null,
+        apiUrl: successUrl,
         userId: session.id,
       },
     });
 
     await prisma.botAccess.upsert({
-      where: {
-        botId_userId: {
-          botId: bot.id,
-          userId: session.id,
-        },
-      },
+      where: { botId_userId: { botId: bot.id, userId: session.id } },
       update: {},
-      create: {
-        botId: bot.id,
-        userId: session.id,
-        role: "OWNER",
-      },
+      create: { botId: bot.id, userId: session.id, role: "OWNER" },
     });
 
-    console.log("✅ Bot conectado e salvo no banco!");
-    console.log("==============================\n");
-
-    return NextResponse.json({
-      success: true,
-      bot,
-    });
+    return NextResponse.json({ success: true, bot });
   } catch (err) {
-    console.error("\n❌ [CONNECT-BOT ERROR]");
-    console.error(err);
-    console.log("==============================\n");
-
-    return NextResponse.json(
-      { error: "Erro interno" },
-      { status: 500 }
-    );
+    console.error("[CONNECT-BOT ERROR]", err);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
