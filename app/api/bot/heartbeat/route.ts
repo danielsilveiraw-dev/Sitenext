@@ -12,10 +12,7 @@ export async function POST(req: NextRequest) {
     const { botId } = await req.json();
 
     if (!botId) {
-      return NextResponse.json(
-        { error: "botId obrigatório" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "botId obrigatório" }, { status: 400 });
     }
 
     const bot = await prisma.bot.findUnique({
@@ -23,14 +20,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (!bot) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Bot ainda não cadastrado no painel",
-          botId: String(botId),
-        },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        ok: true,
+        status: "bot_not_registered",
+        message: "Bot ainda não cadastrado no painel",
+      });
     }
 
     await prisma.bot.update({
@@ -40,10 +34,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[bot heartbeat]", err);
+    console.error("[HEARTBEAT ERROR]", err);
 
     return NextResponse.json(
-      { error: "Erro interno no heartbeat" },
+      { error: "Erro interno heartbeat" },
       { status: 500 }
     );
   }
