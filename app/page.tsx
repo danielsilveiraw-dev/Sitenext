@@ -93,14 +93,11 @@ export default function LandingPage() {
         .page {
           position: relative;
           z-index: 10;
+          padding-top: 64px;
         }
 
         /* ── Status pill ── */
         .top-status {
-          position: absolute;
-          top: 24px;
-          right: 32px;
-          z-index: 50;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -125,10 +122,10 @@ export default function LandingPage() {
 
         /* ── Hero ── */
         .hero {
-          min-height: 100vh;
+          min-height: calc(100vh - 220px);
           max-width: 1180px;
           margin: 0 auto;
-          padding: 70px 32px 70px;
+          padding: 80px 32px 30px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -318,7 +315,7 @@ export default function LandingPage() {
         .stats-wrap {
           max-width: 960px;
           margin: -24px auto 0;
-          padding: 0 32px 80px;
+          padding: 0 32px 40px;
         }
 
         .stats-card {
@@ -570,6 +567,28 @@ export default function LandingPage() {
           letter-spacing: 0.06em;
         }
 
+        /* ── Navbar ── */
+        .navbar {
+          position: fixed;
+          top: 0; left: 0; right: 0;
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 32px;
+          height: 64px;
+          background: rgba(5,5,5,0.75);
+          backdrop-filter: blur(24px);
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .navbar-logo {
+          height: 38px;
+          width: auto;
+          object-fit: contain;
+          opacity: 0.92;
+        }
+
         /* ── Responsive ── */
         @media (max-width: 920px) {
           .top-status { top: 18px; right: 18px; }
@@ -604,17 +623,17 @@ export default function LandingPage() {
       <div className="bg-grid" />
 
       <main className="page">
-        <div className="top-status">
-          <span className="nav-dot" />
-          ONLINE
-        </div>
+        {/* ── Navbar ── */}
+        <nav className="navbar">
+          <img src="/logo.png" alt="NextDevs" className="navbar-logo" />
+          <div className="top-status">
+            <span className="nav-dot" />
+            ONLINE
+          </div>
+        </nav>
 
         {/* ── Hero ── */}
         <section className="hero">
-          <div className="hero-brand">
-            <img src="/logo.png" alt="NextDevs" />
-          </div>
-
           <div className="hero-tag">
             <span className="hero-tag-dot" />
             PAINEL DE GERENCIAMENTO DISCORD
