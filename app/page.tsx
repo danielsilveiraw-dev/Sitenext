@@ -31,7 +31,7 @@ export default function LandingPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
         *, *::before, *::after {
           box-sizing: border-box;
@@ -45,8 +45,8 @@ export default function LandingPage() {
 
         body {
           background: #050505;
-          color: #f0f0f0;
-          font-family: 'DM Sans', sans-serif;
+          color: #f5f5f5;
+          font-family: 'Inter', sans-serif;
           overflow-x: hidden;
         }
 
@@ -190,11 +190,11 @@ export default function LandingPage() {
         .hero-title {
           animation: fadeInUp 0.7s 0.15s ease both;
           max-width: 840px;
-          font-family: 'Syne', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: clamp(40px, 5.2vw, 74px);
           font-weight: 800;
           line-height: 1.0;
-          letter-spacing: -0.04em;
+          letter-spacing: -0.06em;
           margin-bottom: 22px;
         }
 
@@ -225,13 +225,14 @@ export default function LandingPage() {
 
         /* ── Buttons ── */
         .btn-primary,
-        .btn-secondary {
+        .btn-secondary,
+        .btn-discord {
           min-height: 54px;
           padding: 0 26px;
           border-radius: 14px;
           font-size: 14px;
           font-weight: 600;
-          font-family: 'DM Sans', sans-serif;
+          font-family: 'Inter', sans-serif;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -272,6 +273,20 @@ export default function LandingPage() {
 
         .btn-primary:hover {
           box-shadow: 0 16px 44px rgba(121,34,242,0.42);
+        }
+
+        .btn-discord {
+          gap: 11px;
+          color: #fff;
+          border: 1px solid rgba(88,101,242,0.35);
+          background: rgba(88,101,242,0.18);
+          box-shadow: 0 8px 28px rgba(88,101,242,0.18);
+        }
+
+        .btn-discord:hover {
+          background: rgba(88,101,242,0.28);
+          border-color: rgba(88,101,242,0.55);
+          box-shadow: 0 12px 36px rgba(88,101,242,0.30);
         }
 
         .btn-secondary {
@@ -325,10 +340,10 @@ export default function LandingPage() {
         .stat-item:last-child { border-right: none; }
 
         .stat-val {
-          font-family: 'Syne', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 40px;
           font-weight: 800;
-          letter-spacing: -0.04em;
+          letter-spacing: -0.06em;
           line-height: 1;
         }
 
@@ -368,10 +383,10 @@ export default function LandingPage() {
         }
 
         .section-title {
-          font-family: 'Syne', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: clamp(28px, 3.8vw, 46px);
           line-height: 1.06;
-          letter-spacing: -0.04em;
+          letter-spacing: -0.06em;
           font-weight: 800;
         }
 
@@ -436,10 +451,10 @@ export default function LandingPage() {
 
         .feature-title {
           margin-bottom: 9px;
-          font-family: 'Syne', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 16px;
           font-weight: 700;
-          letter-spacing: -0.02em;
+          
         }
 
         .feature-desc {
@@ -481,10 +496,10 @@ export default function LandingPage() {
 
         .step-title {
           margin-bottom: 9px;
-          font-family: 'Syne', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: 16px;
           font-weight: 700;
-          letter-spacing: -0.02em;
+          
         }
 
         .step-desc {
@@ -517,10 +532,10 @@ export default function LandingPage() {
 
         .cta-title {
           margin-bottom: 12px;
-          font-family: 'Syne', sans-serif;
+          font-family: 'Inter', sans-serif;
           font-size: clamp(26px, 4vw, 42px);
           font-weight: 800;
-          letter-spacing: -0.04em;
+          letter-spacing: -0.06em;
         }
 
         .cta-sub {
@@ -620,6 +635,11 @@ export default function LandingPage() {
               <DiscordIcon />
               Entrar com Discord
             </a>
+            <a href="https://discord.gg/r5Mb3J5ah8" target="_blank" rel="noopener noreferrer" className="btn-discord">
+              <DiscordIcon />
+              Nosso Servidor
+            </a>
+
             <a href="#features" className="btn-secondary">
               Ver funcionalidades →
             </a>
