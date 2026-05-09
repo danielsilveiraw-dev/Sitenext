@@ -33,6 +33,23 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
+    const botApiUrl = String(body.botApiUrl || "").replace(/\/$/, "");
+    const code = body.code;
+
+    if (!botApiUrl) {
+      return NextResponse.json(
+        { error: "URL da API do bot obrigatória" },
+        { status: 400 }
+      );
+    }
+
+    if (!code) {
+      return NextResponse.json(
+        { error: "Código de conexão obrigatório" },
+        { status: 400 }
+      );
+    }
+
     await prisma.user.upsert({
       where: { id: session.id },
       update: {
@@ -46,18 +63,25 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const botApiUrl = process.env.BOT_API_URL || "http://127.0.0.1:8080";
-
     const botRes = await fetch(`${botApiUrl}/connect-code`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.BOT_API_SECRET}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ code }),
     });
 
-    const data = await botRes.json();
+    let data: any = null;
+
+    try {
+      data = await botRes.json();
+    } catch {
+      return NextResponse.json(
+        { error: "A API do bot não retornou JSON válido" },
+        { status: 502 }
+      );
+    }
 
     if (!botRes.ok) {
       return NextResponse.json(data, { status: botRes.status });
@@ -65,19 +89,19 @@ export async function POST(req: NextRequest) {
 
     if (!data?.bot?.id || !data?.bot?.name) {
       return NextResponse.json(
-        { error: "Resposta inesperada do bot" },
+        { error: "Resposta inesperada da API do bot" },
         { status: 502 }
       );
     }
 
     const bot = await prisma.bot.upsert({
-      where: { id: data.bot.id },
+      where: { id: String(data.bot.id) },
       update: {
         name: data.bot.name,
         avatar: data.bot.avatar ?? null,
       },
       create: {
-        id: data.bot.id,
+        id: String(data.bot.id),
         name: data.bot.name,
         avatar: data.bot.avatar ?? null,
         userId: session.id,

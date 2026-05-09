@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [bots, setBots] = useState<ConnectedBot[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [code, setCode] = useState("");
+  const [botApiUrl, setBotApiUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,11 @@ export default function DashboardPage() {
       return;
     }
 
+    if (!botApiUrl.trim()) {
+      alert("Digite a URL da API do bot");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -44,13 +50,16 @@ export default function DashboardPage() {
           "Content-Type": "application/json",
           Authorization: "Bearer Daniel9907!",
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({
+          code,
+          botApiUrl,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.detail || "Erro ao conectar");
+        alert(data.detail || data.error || "Erro ao conectar");
         return;
       }
 
@@ -61,14 +70,9 @@ export default function DashboardPage() {
         return;
       }
 
-      await fetch("/api/save-bot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data.bot),
-      });
-
       setBots((prev) => [...prev, data.bot]);
       setCode("");
+      setBotApiUrl("");
       setShowModal(false);
       alert("Bot conectado com sucesso!");
     } catch (err) {
@@ -515,7 +519,7 @@ export default function DashboardPage() {
 
         .modal-box {
           width: 100%;
-          max-width: 440px;
+          max-width: 480px;
           background: #0e0e0e;
           border: 1px solid rgba(255, 255, 255, 0.09);
           border-radius: 28px;
@@ -541,6 +545,14 @@ export default function DashboardPage() {
           font-family: 'JetBrains Mono', monospace;
         }
 
+        .modal-label {
+          display: block;
+          font-size: 12px;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.5);
+          margin-bottom: 8px;
+        }
+
         .modal-input {
           width: 100%;
           padding: 16px 20px;
@@ -549,10 +561,15 @@ export default function DashboardPage() {
           background: rgba(255, 255, 255, 0.04);
           color: #fff;
           font-family: 'JetBrains Mono', monospace;
+          font-size: 14px;
+          margin-bottom: 18px;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .modal-input.code {
           font-size: 16px;
           letter-spacing: 0.12em;
-          margin-bottom: 20px;
-          transition: border-color 0.2s, box-shadow 0.2s;
+          text-transform: uppercase;
         }
 
         .modal-input::placeholder {
@@ -563,6 +580,14 @@ export default function DashboardPage() {
           outline: none;
           border-color: #7922f2;
           box-shadow: 0 0 0 3px rgba(121, 34, 242, 0.18);
+        }
+
+        .modal-help {
+          margin-top: -8px;
+          margin-bottom: 20px;
+          font-size: 11px;
+          line-height: 1.5;
+          color: rgba(255, 255, 255, 0.28);
         }
 
         .modal-actions {
@@ -666,7 +691,7 @@ export default function DashboardPage() {
       <div className="bg-grid" />
 
       <header className="dash-header">
-        <img src="/logo.png" alt="NextDevs" className="dash-logo" />
+        <img src="/logo.png" alt="Painel" className="dash-logo" />
       </header>
 
       <main className="section-wrap">
@@ -788,16 +813,30 @@ export default function DashboardPage() {
 
             <p className="modal-sub">
               Gere um código usando <span>/codigopainel</span> no Discord e
-              cole abaixo.
+              informe a URL da API do bot.
             </p>
 
+            <label className="modal-label">Código de conexão</label>
             <input
-              className="modal-input"
+              className="modal-input code"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="ABCD-EFGH-IJKL"
               autoFocus
             />
+
+            <label className="modal-label">URL da API do bot</label>
+            <input
+              className="modal-input"
+              value={botApiUrl}
+              onChange={(e) => setBotApiUrl(e.target.value)}
+              placeholder="http://127.0.0.1:8080"
+            />
+
+            <div className="modal-help">
+              Cada bot precisa ter uma URL ou porta diferente. Exemplo:
+              Cafézinho em 8080, Grudge SMP em 8081.
+            </div>
 
             <div className="modal-actions">
               <button
