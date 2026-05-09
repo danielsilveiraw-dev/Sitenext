@@ -2,11 +2,15 @@ const { execSync } = require('child_process')
 const { createServer } = require('http')
 const { parse } = require('url')
 const next = require('next')
+const fs = require('fs')
 
-// Roda o build antes de iniciar
-console.log('> Building...')
-execSync('npm run build', { stdio: 'inherit' })
-console.log('> Build completo!')
+if (!fs.existsSync('.next/BUILD_ID')) {
+  console.log('> Building...')
+  execSync('npm run build', { stdio: 'inherit' })
+  console.log('> Build completo!')
+} else {
+  console.log('> Build já existe, pulando...')
+}
 
 const app = next({ dev: false })
 const handle = app.getRequestHandler()
