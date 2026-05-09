@@ -79,64 +79,25 @@ export default function LandingPage() {
           z-index: 10;
         }
 
-        .nav {
+        .top-status {
           position: fixed;
-          top: 18px;
+          top: 24px;
           left: 50%;
           transform: translateX(-50%);
-          width: calc(100% - 48px);
-          max-width: 1280px;
           z-index: 50;
-          height: 74px;
-          padding: 0 28px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 22px;
-          background: rgba(10,10,10,0.72);
-          backdrop-filter: blur(24px);
-          box-shadow: 0 10px 40px rgba(0,0,0,0.35), inset 0 1px rgba(255,255,255,0.04);
-        }
-
-        .nav-logo img {
-          width: 42px;
-          height: 42px;
-          object-fit: contain;
-          display: block;
-          border-radius: 12px;
-        }
-
-        .nav-actions {
-          display: flex;
-          align-items: center;
-          gap: 18px;
-        }
-
-        .nav-link {
-          color: rgba(255,255,255,0.62);
-          text-decoration: none;
-          font-size: 14px;
-          font-weight: 600;
-          transition: 0.2s;
-        }
-
-        .nav-link:hover {
-          color: #fff;
-        }
-
-        .nav-pill {
           display: flex;
           align-items: center;
           gap: 8px;
           border: 1px solid rgba(149,254,89,0.25);
           border-radius: 999px;
-          padding: 8px 16px;
+          padding: 9px 18px;
           font-family: 'JetBrains Mono', monospace;
           font-size: 10px;
           color: #95fe59;
           letter-spacing: 0.08em;
-          background: rgba(149,254,89,0.04);
+          background: rgba(10,10,10,0.72);
+          backdrop-filter: blur(20px);
+          box-shadow: 0 10px 40px rgba(0,0,0,0.35);
         }
 
         .nav-dot {
@@ -151,7 +112,7 @@ export default function LandingPage() {
           min-height: 100vh;
           max-width: 1180px;
           margin: 0 auto;
-          padding: 180px 32px 70px;
+          padding: 120px 32px 70px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -442,9 +403,10 @@ export default function LandingPage() {
         }
 
         .cta-logo {
-          height: 74px;
+          height: 96px;
           width: auto;
-          margin-bottom: 22px;
+          margin: 0 auto 24px;
+          display: block;
           object-fit: contain;
         }
 
@@ -485,23 +447,12 @@ export default function LandingPage() {
         }
 
         @media (max-width: 920px) {
-          .nav {
-            width: calc(100% - 20px);
-            height: 70px;
-            padding: 0 18px;
-          }
-
-          .nav-logo img {
-            width: 36px;
-            height: 36px;
-          }
-
-          .nav-link {
-            display: none;
+          .top-status {
+            top: 18px;
           }
 
           .hero {
-            padding: 150px 22px 70px;
+            padding: 110px 22px 70px;
           }
 
           .hero-brand img {
@@ -540,20 +491,10 @@ export default function LandingPage() {
       <div className="bg-grid" />
 
       <main className="page">
-        <nav className="nav">
-          <a href="/" className="nav-logo">
-            <img src="/icon.png" alt="NextDevs" />
-          </a>
-
-          <div className="nav-actions">
-            <a href="#features" className="nav-link">Funcionalidades</a>
-            <a href="/auth/signin" className="nav-link">Entrar</a>
-            <div className="nav-pill">
-              <span className="nav-dot" />
-              ONLINE
-            </div>
-          </div>
-        </nav>
+        <div className="top-status">
+          <span className="nav-dot" />
+          ONLINE
+        </div>
 
         <section className="hero">
           <div className="hero-brand">
