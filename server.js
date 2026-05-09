@@ -1,6 +1,12 @@
+const { execSync } = require('child_process')
 const { createServer } = require('http')
 const { parse } = require('url')
 const next = require('next')
+
+// Roda o build antes de iniciar
+console.log('> Building...')
+execSync('npm run build', { stdio: 'inherit' })
+console.log('> Build completo!')
 
 const app = next({ dev: false })
 const handle = app.getRequestHandler()
