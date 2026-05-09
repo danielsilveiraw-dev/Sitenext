@@ -15,6 +15,28 @@ type Log = {
   };
 };
 
+function LogAvatar({ name, avatar }: { name?: string; avatar?: string }) {
+  const [imageError, setImageError] = useState(false);
+
+  if (!avatar || imageError) {
+    return (
+      <div className="log-avatar-fallback">
+        {name?.[0]?.toUpperCase() ?? "?"}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={avatar}
+      alt={name ?? "Usuário"}
+      className="log-avatar"
+      referrerPolicy="no-referrer"
+      onError={() => setImageError(true)}
+    />
+  );
+}
+
 export default function BotDashboard({
   params,
 }: {
@@ -156,16 +178,24 @@ export default function BotDashboard({
         .back-link {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          color: rgba(255, 255, 255, 0.45);
-          font-size: 13px;
-          font-weight: 600;
+          gap: 9px;
+          color: rgba(255, 255, 255, 0.72);
+          font-size: 12px;
+          font-weight: 800;
           text-decoration: none;
-          transition: color 0.2s;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 999px;
+          padding: 9px 14px;
+          background: rgba(255, 255, 255, 0.035);
+          backdrop-filter: blur(12px);
+          transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.2s;
         }
 
         .back-link:hover {
           color: #fff;
+          border-color: rgba(121, 34, 242, 0.32);
+          background: rgba(121, 34, 242, 0.08);
+          transform: translateY(-1px);
         }
 
         .divider {
@@ -232,7 +262,7 @@ export default function BotDashboard({
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(circle at 88% 20%, rgba(149, 254, 89, 0.12), transparent 26%),
+            radial-gradient(circle at 88% 20%, rgba(149, 254, 89, 0.08), transparent 26%),
             radial-gradient(circle at 20% 100%, rgba(121, 34, 242, 0.18), transparent 30%);
           pointer-events: none;
         }
@@ -240,10 +270,6 @@ export default function BotDashboard({
         .hero-content {
           position: relative;
           z-index: 1;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 24px;
         }
 
         .hero-tag {
@@ -276,33 +302,10 @@ export default function BotDashboard({
 
         .hero-sub {
           margin: 12px 0 0;
-          max-width: 540px;
+          max-width: 580px;
           color: rgba(255, 255, 255, 0.42);
           font-size: 14px;
           line-height: 1.7;
-        }
-
-        .hero-stat {
-          min-width: 170px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 22px;
-          padding: 18px;
-          background: rgba(0, 0, 0, 0.18);
-        }
-
-        .hero-stat-number {
-          font-size: 30px;
-          font-weight: 900;
-          letter-spacing: -0.04em;
-        }
-
-        .hero-stat-label {
-          margin-top: 4px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.35);
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
         }
 
         .modules-grid {
@@ -351,9 +354,9 @@ export default function BotDashboard({
         }
 
         .module-disabled {
-          background: rgba(255, 255, 255, 0.015);
-          border: 1px dashed rgba(255, 255, 255, 0.1);
-          opacity: 0.62;
+          background: rgba(255, 255, 255, 0.018);
+          border: 1px dashed rgba(255, 255, 255, 0.11);
+          opacity: 0.72;
         }
 
         .module-icon {
@@ -397,7 +400,13 @@ export default function BotDashboard({
         }
 
         .module-disabled .module-footer {
-          color: rgba(255, 255, 255, 0.28);
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          padding: 6px 10px;
+          background: rgba(255, 255, 255, 0.045);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.38);
         }
 
         .logs-section {
@@ -486,7 +495,12 @@ export default function BotDashboard({
           height: 42px;
           flex-shrink: 0;
           border-radius: 999px;
+        }
+
+        .log-avatar {
           object-fit: cover;
+          background: rgba(121, 34, 242, 0.18);
+          border: 1px solid rgba(121, 34, 242, 0.25);
         }
 
         .log-avatar-fallback {
@@ -552,15 +566,6 @@ export default function BotDashboard({
           .modules-grid {
             grid-template-columns: 1fr;
           }
-
-          .hero-content {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-
-          .hero-stat {
-            width: 100%;
-          }
         }
 
         @media (max-width: 640px) {
@@ -621,7 +626,8 @@ export default function BotDashboard({
           <header className="topbar">
             <div className="top-left">
               <Link href="/dashboard" className="back-link">
-                ← Meus Bots
+                <span>←</span>
+                <span>Meus Bots</span>
               </Link>
 
               <span className="divider">/</span>
@@ -656,11 +662,6 @@ export default function BotDashboard({
                   as ações recentes feitas neste bot.
                 </p>
               </div>
-
-              <div className="hero-stat">
-                <div className="hero-stat-number">{modules.length}</div>
-                <div className="hero-stat-label">módulos</div>
-              </div>
             </div>
           </section>
 
@@ -692,7 +693,9 @@ export default function BotDashboard({
             <div className="logs-head">
               <div>
                 <h2 className="logs-title">Logs Recentes</h2>
-                <p className="logs-sub">Últimas atividades registradas no painel.</p>
+                <p className="logs-sub">
+                  Últimas atividades registradas no painel.
+                </p>
               </div>
 
               <span className="logs-count">
@@ -709,17 +712,10 @@ export default function BotDashboard({
               <div className="logs-list">
                 {logs.map((log) => (
                   <div key={log.id} className="log-item">
-                    {log.user?.avatar ? (
-                      <img
-                        src={log.user.avatar}
-                        alt={log.user.name}
-                        className="log-avatar"
-                      />
-                    ) : (
-                      <div className="log-avatar-fallback">
-                        {log.user?.name?.[0]?.toUpperCase() ?? "?"}
-                      </div>
-                    )}
+                    <LogAvatar
+                      name={log.user?.name}
+                      avatar={log.user?.avatar}
+                    />
 
                     <div className="log-main">
                       <div className="log-top">
@@ -730,9 +726,7 @@ export default function BotDashboard({
                         <span className="log-action">{log.action}</span>
                       </div>
 
-                      {log.detail && (
-                        <p className="log-detail">{log.detail}</p>
-                      )}
+                      {log.detail && <p className="log-detail">{log.detail}</p>}
                     </div>
 
                     <span className="log-time">
