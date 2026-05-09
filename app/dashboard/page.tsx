@@ -808,7 +808,7 @@ export default function DashboardPage() {
           }
         >
           <div className="modal-box">
-            <div className="modal-title">Conectar Bot</div>
+            <div className="modal-title">Conectar Bot Multi</div>
 
             <p className="modal-sub">
               Gere um código usando <span>/codigopainel</span> no Discord e
