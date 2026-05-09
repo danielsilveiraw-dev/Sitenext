@@ -6,6 +6,7 @@ type ConnectedBot = {
   id: string;
   name: string;
   avatar: string | null;
+  online?: boolean;
 };
 
 export default function DashboardPage() {
@@ -72,169 +73,604 @@ export default function DashboardPage() {
   return (
     <>
       <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-          margin: 0;
-          background: #070707;
-          color: white;
-          font-family: Arial, sans-serif;
+          background: #050505;
+          color: #f5f5f5;
+          font-family: 'Inter', sans-serif;
           overflow-x: hidden;
+          min-height: 100vh;
         }
-        * { box-sizing: border-box; }
+
+        /* ── Background ── */
         .bgfx {
           position: fixed;
           inset: 0;
-          background:
-            radial-gradient(ellipse 40% 30% at 0% 0%, rgba(121,34,242,0.18), transparent),
-            radial-gradient(ellipse 30% 20% at 100% 100%, rgba(149,254,89,0.08), transparent);
           pointer-events: none;
           z-index: 0;
+          background:
+            radial-gradient(circle at 8% 10%, rgba(121,34,242,0.18), transparent 28%),
+            radial-gradient(circle at 92% 85%, rgba(149,254,89,0.07), transparent 30%);
         }
-        .card {
+
+        .bg-grid {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          opacity: 0.18;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+          background-size: 64px 64px;
+          mask-image: linear-gradient(to bottom, black 30%, transparent 90%);
+        }
+
+        /* ── Header ── */
+        .dash-header {
+          position: relative;
+          z-index: 10;
+          padding: 28px 40px 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          max-width: 1280px;
+          margin: 0 auto;
+        }
+
+        .dash-logo {
+          height: 40px;
+          width: auto;
+          object-fit: contain;
+          opacity: 0.92;
+        }
+
+        .dash-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 999px;
+          padding: 7px 16px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: rgba(255,255,255,0.4);
           background: rgba(255,255,255,0.03);
+          letter-spacing: 0.08em;
+        }
+
+        /* ── Section header ── */
+        .section-wrap {
+          position: relative;
+          z-index: 10;
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 40px 40px 80px;
+        }
+
+        .section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 32px;
+        }
+
+        .section-label {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .section-tag {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: #95fe59;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          text-shadow: 0 0 16px rgba(149,254,89,0.3);
+        }
+
+        .section-title {
+          font-size: 28px;
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          line-height: 1;
+        }
+
+        .bots-count {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 999px;
+          padding: 8px 18px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: rgba(255,255,255,0.4);
+          background: rgba(255,255,255,0.03);
+        }
+
+        .bots-count-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 999px;
+          background: #95fe59;
+          box-shadow: 0 0 8px rgba(149,254,89,0.6);
+        }
+
+        /* ── Grid ── */
+        .bots-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 18px;
+        }
+
+        /* ── Bot card ── */
+        .bot-card {
+          background: rgba(255,255,255,0.025);
           border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 24px;
+          padding: 24px;
+          backdrop-filter: blur(14px);
+          transition: border-color 0.2s, transform 0.2s;
+          will-change: transform;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .bot-card::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(121,34,242,0.5), transparent);
+          opacity: 0;
+          transition: opacity 0.3s;
+        }
+
+        .bot-card:hover {
+          border-color: rgba(121,34,242,0.25);
+          transform: translateY(-3px);
+        }
+
+        .bot-card:hover::before { opacity: 1; }
+
+        .bot-card-top {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 20px;
+        }
+
+        .bot-avatar {
+          position: relative;
+          flex-shrink: 0;
+        }
+
+        .bot-avatar img,
+        .bot-avatar-fallback {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        .bot-avatar-fallback {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(121,34,242,0.25);
+          border: 1px solid rgba(121,34,242,0.3);
+          font-size: 20px;
+          font-weight: 800;
+          color: #fff;
+        }
+
+        .bot-status-dot {
+          position: absolute;
+          bottom: 2px;
+          right: 2px;
+          width: 13px;
+          height: 13px;
+          border-radius: 999px;
+          border: 2px solid #050505;
+        }
+
+        .bot-status-dot.online {
+          background: #57f287;
+          box-shadow: 0 0 8px rgba(87,242,135,0.7);
+        }
+
+        .bot-status-dot.offline {
+          background: #4e4e4e;
+        }
+
+        .bot-info { flex: 1; min-width: 0; }
+
+        .bot-name {
+          font-size: 16px;
+          font-weight: 700;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          margin-bottom: 4px;
+        }
+
+        .bot-status-label {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px;
+          letter-spacing: 0.08em;
+        }
+
+        .bot-status-label.online { color: #57f287; }
+        .bot-status-label.offline { color: rgba(255,255,255,0.3); }
+
+        .bot-id {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px;
+          color: rgba(255,255,255,0.25);
+          margin-top: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .bot-actions {
+          display: flex;
+          gap: 10px;
+        }
+
+        .btn-open {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 11px 16px;
+          border-radius: 14px;
+          font-size: 13px;
+          font-weight: 700;
+          text-decoration: none;
+          color: #000;
+          background: linear-gradient(135deg, #7922f2, #9b45f5);
+          border: none;
+          cursor: pointer;
+          transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .btn-open:hover { opacity: 0.88; transform: translateY(-1px); }
+
+        .btn-remove {
+          padding: 11px 14px;
+          border-radius: 14px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #f87171;
+          background: rgba(248,113,113,0.08);
+          border: 1px solid rgba(248,113,113,0.2);
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-remove:hover { background: rgba(248,113,113,0.16); }
+
+        /* ── Add card (inline) ── */
+        .bot-card-add {
+          background: rgba(255,255,255,0.015);
+          border: 1px dashed rgba(255,255,255,0.10);
+          border-radius: 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          min-height: 168px;
+          cursor: pointer;
+          transition: border-color 0.2s, background 0.2s, transform 0.2s;
+        }
+
+        .bot-card-add:hover {
+          border-color: rgba(121,34,242,0.35);
+          background: rgba(121,34,242,0.04);
+          transform: translateY(-3px);
+        }
+
+        .add-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(121,34,242,0.12);
+          border: 1px solid rgba(121,34,242,0.2);
+          font-size: 22px;
+          color: #b47cff;
+          line-height: 1;
+        }
+
+        .add-label {
+          font-size: 13px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.35);
+        }
+
+        /* ── Empty state ── */
+        .empty-card {
+          background: rgba(255,255,255,0.025);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 28px;
+          padding: 72px 40px;
+          text-align: center;
           backdrop-filter: blur(14px);
         }
-        .btn {
-          background: linear-gradient(90deg, #7922F2, #95FE59);
-          transition: .2s;
+
+        .empty-icon {
+          width: 72px;
+          height: 72px;
+          margin: 0 auto 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          background: rgba(121,34,242,0.15);
+          border: 1px solid rgba(121,34,242,0.2);
+          font-size: 32px;
         }
-        .btn:hover { transform: translateY(-1px); opacity: .92; }
-        .field { transition: .2s; }
-        .field:focus {
+
+        .empty-title {
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+          margin-bottom: 10px;
+        }
+
+        .empty-sub {
+          color: rgba(255,255,255,0.4);
+          font-size: 14px;
+          margin-bottom: 32px;
+          line-height: 1.7;
+        }
+
+        .btn-connect {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 14px 28px;
+          border-radius: 16px;
+          font-size: 14px;
+          font-weight: 700;
+          color: #000;
+          background: linear-gradient(135deg, #7922f2, #9b45f5);
+          border: none;
+          cursor: pointer;
+          transition: opacity 0.2s, transform 0.2s;
+          box-shadow: 0 12px 36px rgba(121,34,242,0.28);
+        }
+
+        .btn-connect:hover { opacity: 0.88; transform: translateY(-2px); }
+
+        /* ── Modal ── */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          background: rgba(0,0,0,0.70);
+          backdrop-filter: blur(8px);
+        }
+
+        .modal-box {
+          width: 100%;
+          max-width: 440px;
+          background: #0e0e0e;
+          border: 1px solid rgba(255,255,255,0.09);
+          border-radius: 28px;
+          padding: 32px;
+        }
+
+        .modal-title {
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          margin-bottom: 6px;
+        }
+
+        .modal-sub {
+          font-size: 13px;
+          color: rgba(255,255,255,0.38);
+          margin-bottom: 24px;
+          line-height: 1.6;
+        }
+
+        .modal-sub span {
+          color: #95fe59;
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .modal-input {
+          width: 100%;
+          padding: 16px 20px;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.10);
+          background: rgba(255,255,255,0.04);
+          color: #fff;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 16px;
+          letter-spacing: 0.12em;
+          margin-bottom: 20px;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .modal-input::placeholder { color: rgba(255,255,255,0.2); }
+
+        .modal-input:focus {
           outline: none;
-          border-color: #7922F2;
-          box-shadow: 0 0 0 3px rgba(121,34,242,.18);
+          border-color: #7922f2;
+          box-shadow: 0 0 0 3px rgba(121,34,242,0.18);
+        }
+
+        .modal-actions { display: flex; gap: 10px; }
+
+        .btn-cancel {
+          flex: 1;
+          padding: 14px;
+          border-radius: 16px;
+          font-size: 14px;
+          font-weight: 700;
+          color: rgba(255,255,255,0.55);
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .btn-cancel:hover { background: rgba(255,255,255,0.08); }
+
+        .btn-confirm {
+          flex: 1;
+          padding: 14px;
+          border-radius: 16px;
+          font-size: 14px;
+          font-weight: 700;
+          color: #000;
+          background: linear-gradient(135deg, #7922f2, #9b45f5);
+          border: none;
+          cursor: pointer;
+          transition: opacity 0.2s;
+          box-shadow: 0 8px 28px rgba(121,34,242,0.28);
+        }
+
+        .btn-confirm:hover { opacity: 0.88; }
+        .btn-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        @media (max-width: 640px) {
+          .dash-header { padding: 20px 20px 0; }
+          .section-wrap { padding: 32px 20px 60px; }
+          .bots-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 
-      <main className="relative min-h-screen">
-        <div className="bgfx" />
+      <div className="bgfx" />
+      <div className="bg-grid" />
 
-        <header className="relative z-10 border-b border-white/10 px-8 py-5">
-          <div className="mx-auto flex max-w-6xl items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
-              <div>
-                <h1 className="text-lg font-black tracking-widest">
-                  NEXT<span className="text-[#95FE59]">DEVS</span>
-                </h1>
-                <p className="text-xs text-white/35">painel multi-bots</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="btn rounded-xl px-5 py-3 text-sm font-bold text-black"
-            >
-              + Adicionar Bot
+      {/* ── Header ── */}
+      <header className="dash-header">
+        <img src="/logo.png" alt="NextDevs" className="dash-logo" />
+        <div className="dash-badge">
+          painel multi-bots
+        </div>
+      </header>
+
+      {/* ── Content ── */}
+      <main className="section-wrap">
+
+        {bots.length === 0 ? (
+          /* ── Empty state ── */
+          <div className="empty-card">
+            <div className="empty-icon">🤖</div>
+            <h2 className="empty-title">Nenhum bot conectado</h2>
+            <p className="empty-sub">
+              Gere um código usando{" "}
+              <span style={{ color: "#95fe59", fontFamily: "'JetBrains Mono', monospace" }}>
+                /codigopainel
+              </span>{" "}
+              no Discord e conecte seu primeiro bot.
+            </p>
+            <button className="btn-connect" onClick={() => setShowModal(true)}>
+              + Conectar Primeiro Bot
             </button>
           </div>
-        </header>
-
-        <section className="relative z-10 mx-auto max-w-6xl px-8 py-8">
-          {bots.length === 0 ? (
-            <div className="card rounded-3xl p-16 text-center">
-              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-[#7922F2]/20 text-4xl">
-                🤖
+        ) : (
+          <>
+            {/* ── Section header ── */}
+            <div className="section-header">
+              <div className="section-label">
+                <span className="section-tag">// meus bots</span>
+                <h2 className="section-title">Bots conectados</h2>
               </div>
-              <h2 className="mb-2 text-2xl font-black">Nenhum bot conectado</h2>
-              <p className="mb-8 text-white/45">
-                Gere um código usando{" "}
-                <span className="text-[#95FE59]">/codigopainel</span> no Discord.
-              </p>
-              <button
-                onClick={() => setShowModal(true)}
-                className="btn rounded-xl px-6 py-4 font-bold text-black"
-              >
-                Conectar Primeiro Bot
-              </button>
+              <div className="bots-count">
+                <span className="bots-count-dot" />
+                {bots.length} conectado{bots.length !== 1 ? "s" : ""}
+              </div>
             </div>
-          ) : (
-            <>
-              <div className="mb-8 flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-black">Meus Bots</h2>
-                  <p className="mt-1 text-sm text-white/40">Bots conectados ao painel</p>
-                </div>
-                <div className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/50">
-                  {bots.length} conectado(s)
-                </div>
-              </div>
 
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {bots.map((bot) => (
-                  <div key={bot.id} className="card rounded-3xl p-6">
-                    <div className="mb-5 flex items-center gap-4">
+            {/* ── Grid ── */}
+            <div className="bots-grid">
+              {bots.map((bot) => (
+                <div key={bot.id} className="bot-card">
+                  <div className="bot-card-top">
+                    <div className="bot-avatar">
                       {bot.avatar ? (
-                        <img
-                          src={bot.avatar}
-                          alt={bot.name}
-                          className="h-16 w-16 rounded-full object-cover"
-                        />
+                        <img src={bot.avatar} alt={bot.name} />
                       ) : (
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#7922F2]/30 text-2xl font-black text-white">
+                        <div className="bot-avatar-fallback">
                           {bot.name?.[0]?.toUpperCase() ?? "?"}
                         </div>
                       )}
-                      <div>
-                        <h3 className="text-xl font-bold">{bot.name}</h3>
-                        <p className="mt-1 text-xs text-white/35">ID: {bot.id}</p>
-                      </div>
+                      <span className={`bot-status-dot ${bot.online ? "online" : "offline"}`} />
                     </div>
-                    <div className="flex gap-3">
-                      <a
-                        href={`/dashboard/${bot.id}`}
-                        className="btn flex-1 rounded-xl px-4 py-3 text-center text-sm font-bold text-black"
-                      >
-                        Abrir Painel
-                      </a>
-                      <button
-                        onClick={() => removeBot(bot.id)}
-                        className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500/20"
-                      >
-                        Remover
-                      </button>
+                    <div className="bot-info">
+                      <div className="bot-name">{bot.name}</div>
+                      <div className={`bot-status-label ${bot.online ? "online" : "offline"}`}>
+                        {bot.online ? "● ONLINE" : "● OFFLINE"}
+                      </div>
+                      <div className="bot-id">ID: {bot.id}</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-        </section>
+                  <div className="bot-actions">
+                    <a href={`/dashboard/${bot.id}`} className="btn-open">
+                      Abrir Painel →
+                    </a>
+                    <button className="btn-remove" onClick={() => removeBot(bot.id)}>
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
 
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm">
-            <div className="card w-full max-w-md rounded-3xl p-7">
-              <div className="mb-6">
-                <h2 className="text-2xl font-black">Conectar Bot</h2>
-                <p className="mt-1 text-sm text-white/40">
-                  Gere um código usando /codigopainel no Discord.
-                </p>
-              </div>
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="ABCD-EFGH-IJKL"
-                className="field mb-5 w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-lg tracking-widest text-white"
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 rounded-2xl border border-white/10 bg-white/5 py-4 font-bold text-white/70 transition hover:bg-white/10"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={connectBot}
-                  disabled={loading}
-                  className="btn flex-1 rounded-2xl py-4 font-bold text-black disabled:opacity-40"
-                >
-                  {loading ? "Conectando..." : "Conectar"}
-                </button>
+              {/* ── Add bot card (inline) ── */}
+              <div className="bot-card-add" onClick={() => setShowModal(true)}>
+                <div className="add-icon">+</div>
+                <span className="add-label">Adicionar Bot</span>
               </div>
             </div>
-          </div>
+          </>
         )}
       </main>
+
+      {/* ── Modal ── */}
+      {showModal && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+          <div className="modal-box">
+            <div className="modal-title">Conectar Bot</div>
+            <p className="modal-sub">
+              Gere um código usando <span>/codigopainel</span> no Discord e cole abaixo.
+            </p>
+            <input
+              className="modal-input"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="ABCD-EFGH-IJKL"
+              autoFocus
+            />
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setShowModal(false)}>
+                Cancelar
+              </button>
+              <button className="btn-confirm" onClick={connectBot} disabled={loading}>
+                {loading ? "Conectando..." : "Conectar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
