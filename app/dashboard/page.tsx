@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 type ConnectedBot = {
   id: string;
@@ -9,11 +9,34 @@ type ConnectedBot = {
   online?: boolean;
 };
 
+type Toast = {
+  id: number;
+  message: string;
+  type: "success" | "error" | "info";
+};
+
+let toastId = 0;
+
+function useToast() {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const addToast = useCallback((message: string, type: Toast["type"] = "info") => {
+    const id = ++toastId;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
+
+  return { toasts, addToast };
+}
+
 export default function DashboardPage() {
   const [bots, setBots] = useState<ConnectedBot[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const { toasts, addToast } = useToast();
 
   useEffect(() => {
     async function loadBots() {
@@ -30,7 +53,7 @@ export default function DashboardPage() {
 
   async function connectBot() {
     if (!code.trim()) {
-      alert("Digite um código");
+      addToast("Digite um código de conexão", "error");
       return;
     }
 
@@ -46,23 +69,23 @@ export default function DashboardPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.detail || data.error || "Erro ao conectar");
+        addToast(data.detail || data.error || "Erro ao conectar", "error");
         return;
       }
 
       const exists = bots.find((b) => b.id === data.bot.id);
       if (exists) {
-        alert("Este bot já está conectado");
+        addToast("Este bot já está conectado", "error");
         return;
       }
 
       setBots((prev) => [...prev, data.bot]);
       setCode("");
       setShowModal(false);
-      alert("Bot conectado com sucesso!");
+      addToast("Bot conectado com sucesso!", "success");
     } catch (err) {
       console.error(err);
-      alert("Erro interno");
+      addToast("Erro interno ao conectar", "error");
     } finally {
       setLoading(false);
     }
@@ -71,10 +94,12 @@ export default function DashboardPage() {
   async function removeBot(botId: string) {
     try {
       await fetch(`/api/save-bot?id=${botId}`, { method: "DELETE" });
+      setBots((prev) => prev.filter((b) => b.id !== botId));
+      addToast("Bot removido com sucesso", "success");
     } catch (err) {
       console.error(err);
+      addToast("Erro ao remover bot", "error");
     }
-    setBots((prev) => prev.filter((b) => b.id !== botId));
   }
 
   return (
@@ -92,6 +117,62 @@ export default function DashboardPage() {
           min-height: 100vh;
         }
 
+        /* ── Toast ── */
+        .toast-wrap {
+          position: fixed;
+          bottom: 28px;
+          right: 28px;
+          z-index: 999;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          pointer-events: none;
+        }
+
+        .toast {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 18px;
+          border-radius: 16px;
+          backdrop-filter: blur(20px);
+          font-size: 13px;
+          font-weight: 600;
+          min-width: 260px;
+          max-width: 360px;
+          pointer-events: all;
+          animation: toast-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        @keyframes toast-in {
+          from { opacity: 0; transform: translateY(16px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .toast-success {
+          background: rgba(10, 10, 10, 0.92);
+          border: 1px solid rgba(87, 242, 135, 0.3);
+          color: #57f287;
+        }
+
+        .toast-error {
+          background: rgba(10, 10, 10, 0.92);
+          border: 1px solid rgba(248, 113, 113, 0.3);
+          color: #f87171;
+        }
+
+        .toast-info {
+          background: rgba(10, 10, 10, 0.92);
+          border: 1px solid rgba(121, 34, 242, 0.3);
+          color: #b47cff;
+        }
+
+        .toast-icon {
+          font-size: 16px;
+          flex-shrink: 0;
+        }
+
+        /* ── Background ── */
         .bgfx {
           position: fixed;
           inset: 0;
@@ -357,7 +438,6 @@ export default function DashboardPage() {
         }
 
         .empty-title { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 12px; }
-
         .empty-sub { color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 32px; line-height: 1.7; }
 
         .btn-connect {
@@ -455,11 +535,25 @@ export default function DashboardPage() {
           .bot-avatar img, .bot-avatar-fallback { width: 58px; height: 58px; }
           .empty-card { padding: 50px 24px; }
           .modal-actions { flex-direction: column; }
+          .toast-wrap { bottom: 18px; right: 18px; left: 18px; }
+          .toast { min-width: unset; max-width: 100%; }
         }
       `}</style>
 
       <div className="bgfx" />
       <div className="bg-grid" />
+
+      {/* ── Toasts ── */}
+      <div className="toast-wrap">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast toast-${t.type}`}>
+            <span className="toast-icon">
+              {t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}
+            </span>
+            {t.message}
+          </div>
+        ))}
+      </div>
 
       <header className="dash-header">
         <img src="/logo.png" alt="Painel" className="dash-logo" />
