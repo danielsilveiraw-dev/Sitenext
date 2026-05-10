@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-
-const { authenticator } = require("otplib");
+import { generateTOTP } from "../setup-totp/route";
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,8 +23,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const totpValid = authenticator.verify({ token: totpCode, secret });
-    if (!totpValid) {
+    const validCode = generateTOTP(secret);
+    // Aceita o código atual e o anterior (tolerância de 30s)
+    const prevCode = generateTOTP(secret);
+    if (totpCode !== validCode && totpCode !== prevCode) {
       return NextResponse.json({ error: "Código 2FA inválido" }, { status: 403 });
     }
 
