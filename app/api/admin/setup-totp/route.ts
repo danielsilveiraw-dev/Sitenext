@@ -8,16 +8,24 @@ export async function POST(req: NextRequest) {
     const { discordId, password } = await req.json();
 
     if (discordId !== process.env.ADMIN_DISCORD_ID) {
-      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Acesso negado" },
+        { status: 403 }
+      );
     }
 
-    const passwordOk = password === process.env.ADMIN_PASSWORD;
-    if (!passwordOk) {
-      return NextResponse.json({ error: "Senha incorreta" }, { status: 403 });
+    if (password !== process.env.ADMIN_PASSWORD) {
+      return NextResponse.json(
+        { error: "Senha incorreta" },
+        { status: 403 }
+      );
     }
 
     const secret =
-      process.env.ADMIN_TOTP_SECRET || authenticator.generateSecret();
+      process.env.ADMIN_TOTP_SECRET &&
+      process.env.ADMIN_TOTP_SECRET.trim() !== ""
+        ? process.env.ADMIN_TOTP_SECRET
+        : authenticator.generateSecret();
 
     const otpauth = authenticator.keyuri(
       discordId,
@@ -27,9 +35,16 @@ export async function POST(req: NextRequest) {
 
     const qrCode = await QRCode.toDataURL(otpauth);
 
-    return NextResponse.json({ qrCode, secret });
+    return NextResponse.json({
+      qrCode,
+      secret,
+    });
   } catch (err) {
     console.error("[SETUP-TOTP]", err);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Erro interno" },
+      { status: 500 }
+    );
   }
 }
