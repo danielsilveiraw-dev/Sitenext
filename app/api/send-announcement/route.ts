@@ -55,16 +55,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const botApiUrl = process.env.BOT_API_URL;
+    const bot = await prisma.bot.findUnique({
+      where: {
+        id: body.botId,
+      },
+    });
 
-    if (!botApiUrl) {
+    if (!bot) {
       return NextResponse.json(
-        { error: "BOT_API_URL não configurado" },
-        { status: 500 }
+        { error: "Bot não encontrado" },
+        { status: 404 }
       );
     }
 
-    const botRes = await fetch(`${botApiUrl}/send-announcement`, {
+    if (!bot.apiUrl) {
+      return NextResponse.json(
+        { error: "Bot sem apiUrl configurada" },
+        { status: 400 }
+      );
+    }
+
+    const botRes = await fetch(`${bot.apiUrl}/send-announcement`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

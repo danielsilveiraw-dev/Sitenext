@@ -120,7 +120,7 @@ export default function AnnouncementsPage({
         })
         .catch(console.error);
 
-      fetch("/api/guilds/filtered")
+      fetch(`/api/guilds?botId=${resolved.botId}`)
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data)) setGuilds(data);
