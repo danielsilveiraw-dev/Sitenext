@@ -15,6 +15,20 @@ type Log = {
   };
 };
 
+type Notice = {
+  id: string;
+  title: string;
+  message: string;
+  type: "INFO" | "WARNING" | "MAINTENANCE" | "UPDATE";
+};
+
+const NOTICE_COLORS = {
+  INFO: { bg: "rgba(180,124,255,0.10)", border: "rgba(180,124,255,0.25)", text: "#b47cff", icon: "ℹ" },
+  WARNING: { bg: "rgba(251,191,36,0.10)", border: "rgba(251,191,36,0.25)", text: "#fbbf24", icon: "⚠" },
+  MAINTENANCE: { bg: "rgba(248,113,113,0.10)", border: "rgba(248,113,113,0.25)", text: "#f87171", icon: "🔧" },
+  UPDATE: { bg: "rgba(87,242,135,0.10)", border: "rgba(87,242,135,0.25)", text: "#57f287", icon: "🚀" },
+};
+
 function LogAvatar({ name, avatar }: { name?: string; avatar?: string }) {
   const [imageError, setImageError] = useState(false);
 
@@ -46,22 +60,26 @@ export default function BotDashboard({
 
   const [botId, setBotId] = useState("");
   const [logs, setLogs] = useState<Log[]>([]);
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [dismissedNotices, setDismissedNotices] = useState<Set<string>>(new Set());
 
   const loadData = useCallback(async () => {
     const resolved = await params;
     setBotId(resolved.botId);
 
-    const res = await fetch(`/api/bots/${resolved.botId}/logs`, {
-      cache: "no-store",
-    });
+    const [logsRes, noticesRes] = await Promise.all([
+      fetch(`/api/bots/${resolved.botId}/logs`, { cache: "no-store" }),
+      fetch("/api/notices"),
+    ]);
 
-    const data = await res.json();
+    const logsData = await logsRes.json();
+    const noticesData = await noticesRes.json();
 
-    if (Array.isArray(data)) {
-      setLogs(data);
-    } else {
-      setLogs([]);
-    }
+    if (Array.isArray(logsData)) setLogs(logsData);
+    else setLogs([]);
+
+    if (Array.isArray(noticesData)) setNotices(noticesData);
+    else setNotices([]);
   }, [params]);
 
   useEffect(() => {
@@ -75,13 +93,11 @@ export default function BotDashboard({
         loadData();
       }
     };
-
     window.addEventListener("pageshow", handlePageShow);
-
-    return () => {
-      window.removeEventListener("pageshow", handlePageShow);
-    };
+    return () => window.removeEventListener("pageshow", handlePageShow);
   }, [router, loadData]);
+
+  const visibleNotices = notices.filter((n) => !dismissedNotices.has(n.id));
 
   const modules = [
     {
@@ -112,9 +128,7 @@ export default function BotDashboard({
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-        * {
-          box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
           margin: 0;
@@ -175,6 +189,13 @@ export default function BotDashboard({
           min-width: 0;
         }
 
+        .top-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+
         .back-link {
           display: inline-flex;
           align-items: center;
@@ -212,6 +233,63 @@ export default function BotDashboard({
           color: rgba(255, 255, 255, 0.36);
         }
 
+        /* ── Notices ── */
+        .notices-wrap {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 18px;
+        }
+
+        .notice-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          animation: notice-in 0.3s ease both;
+        }
+
+        @keyframes notice-in {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .notice-icon {
+          font-size: 16px;
+          flex-shrink: 0;
+          margin-top: 1px;
+        }
+
+        .notice-body { flex: 1; min-width: 0; }
+
+        .notice-title {
+          font-size: 13px;
+          font-weight: 800;
+          margin-bottom: 2px;
+        }
+
+        .notice-message {
+          font-size: 12px;
+          color: rgba(255,255,255,0.5);
+          line-height: 1.5;
+        }
+
+        .notice-dismiss {
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: rgba(255,255,255,0.3);
+          font-size: 16px;
+          padding: 0;
+          flex-shrink: 0;
+          line-height: 1;
+          transition: color 0.2s;
+        }
+
+        .notice-dismiss:hover { color: rgba(255,255,255,0.7); }
+
         .hero {
           position: relative;
           overflow: hidden;
@@ -235,10 +313,7 @@ export default function BotDashboard({
           pointer-events: none;
         }
 
-        .hero-content {
-          position: relative;
-          z-index: 1;
-        }
+        .hero-content { position: relative; z-index: 1; }
 
         .hero-tag {
           display: inline-flex;
@@ -253,8 +328,7 @@ export default function BotDashboard({
         }
 
         .hero-dot {
-          width: 7px;
-          height: 7px;
+          width: 7px; height: 7px;
           border-radius: 999px;
           background: #95fe59;
           box-shadow: 0 0 12px rgba(149, 254, 89, 0.7);
@@ -296,9 +370,7 @@ export default function BotDashboard({
         .module-card::before {
           content: "";
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
+          top: 0; left: 0; right: 0;
           height: 1px;
           background: linear-gradient(90deg, transparent, rgba(121, 34, 242, 0.6), transparent);
           opacity: 0;
@@ -317,9 +389,7 @@ export default function BotDashboard({
           transform: translateY(-3px);
         }
 
-        .module-active:hover::before {
-          opacity: 1;
-        }
+        .module-active:hover::before { opacity: 1; }
 
         .module-disabled {
           background: rgba(255, 255, 255, 0.018);
@@ -328,11 +398,8 @@ export default function BotDashboard({
         }
 
         .module-icon {
-          width: 48px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          width: 48px; height: 48px;
+          display: flex; align-items: center; justify-content: center;
           border-radius: 16px;
           background: rgba(121, 34, 242, 0.13);
           border: 1px solid rgba(121, 34, 242, 0.22);
@@ -340,20 +407,8 @@ export default function BotDashboard({
           margin-bottom: 16px;
         }
 
-        .module-title {
-          margin: 0 0 7px;
-          color: white;
-          font-size: 17px;
-          font-weight: 800;
-          letter-spacing: -0.02em;
-        }
-
-        .module-desc {
-          margin: 0;
-          color: rgba(255, 255, 255, 0.38);
-          font-size: 13px;
-          line-height: 1.55;
-        }
+        .module-title { margin: 0 0 7px; color: white; font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+        .module-desc { margin: 0; color: rgba(255, 255, 255, 0.38); font-size: 13px; line-height: 1.55; }
 
         .module-footer {
           margin-top: 18px;
@@ -363,9 +418,7 @@ export default function BotDashboard({
           letter-spacing: 0.08em;
         }
 
-        .module-active .module-footer {
-          color: #95fe59;
-        }
+        .module-active .module-footer { color: #95fe59; }
 
         .module-disabled .module-footer {
           display: inline-flex;
@@ -393,18 +446,8 @@ export default function BotDashboard({
           margin-bottom: 18px;
         }
 
-        .logs-title {
-          margin: 0;
-          font-size: 20px;
-          font-weight: 900;
-          letter-spacing: -0.03em;
-        }
-
-        .logs-sub {
-          margin: 5px 0 0;
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.35);
-        }
+        .logs-title { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -0.03em; }
+        .logs-sub { margin: 5px 0 0; font-size: 12px; color: rgba(255, 255, 255, 0.35); }
 
         .logs-count {
           border: 1px solid rgba(255, 255, 255, 0.08);
@@ -425,21 +468,10 @@ export default function BotDashboard({
           background: rgba(0, 0, 0, 0.12);
         }
 
-        .empty-logs-icon {
-          font-size: 30px;
-          margin-bottom: 10px;
-        }
+        .empty-logs-icon { font-size: 30px; margin-bottom: 10px; }
+        .empty-logs-text { font-size: 13px; color: rgba(255, 255, 255, 0.36); }
 
-        .empty-logs-text {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.36);
-        }
-
-        .logs-list {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
+        .logs-list { display: flex; flex-direction: column; gap: 10px; }
 
         .log-item {
           display: flex;
@@ -457,10 +489,8 @@ export default function BotDashboard({
           background: rgba(121, 34, 242, 0.035);
         }
 
-        .log-avatar,
-        .log-avatar-fallback {
-          width: 42px;
-          height: 42px;
+        .log-avatar, .log-avatar-fallback {
+          width: 42px; height: 42px;
           flex-shrink: 0;
           border-radius: 999px;
         }
@@ -472,35 +502,17 @@ export default function BotDashboard({
         }
 
         .log-avatar-fallback {
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          display: flex; align-items: center; justify-content: center;
           background: rgba(121, 34, 242, 0.18);
           border: 1px solid rgba(121, 34, 242, 0.25);
-          color: white;
-          font-size: 14px;
-          font-weight: 900;
+          color: white; font-size: 14px; font-weight: 900;
         }
 
-        .log-main {
-          min-width: 0;
-          flex: 1;
-        }
+        .log-main { min-width: 0; flex: 1; }
 
-        .log-top {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          min-width: 0;
-        }
+        .log-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
 
-        .log-name {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          font-size: 13px;
-          font-weight: 800;
-        }
+        .log-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 800; }
 
         .log-action {
           flex-shrink: 0;
@@ -514,67 +526,23 @@ export default function BotDashboard({
           letter-spacing: 0.06em;
         }
 
-        .log-detail {
-          margin-top: 4px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.35);
-        }
-
-        .log-time {
-          flex-shrink: 0;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.28);
-        }
+        .log-detail { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: rgba(255, 255, 255, 0.35); }
+        .log-time { flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255, 255, 255, 0.28); }
 
         @media (max-width: 860px) {
-          .modules-grid {
-            grid-template-columns: 1fr;
-          }
+          .modules-grid { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 640px) {
-          .page {
-            padding: 18px;
-          }
-
-          .topbar {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .id-pill {
-            max-width: 100%;
-          }
-
-          .hero {
-            padding: 24px;
-            border-radius: 24px;
-          }
-
-          .hero-title {
-            font-size: 28px;
-          }
-
-          .logs-section {
-            padding: 18px;
-          }
-
-          .logs-head {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .log-item {
-            align-items: flex-start;
-          }
-
-          .log-time {
-            display: none;
-          }
+          .page { padding: 18px; }
+          .topbar { align-items: flex-start; flex-direction: column; }
+          .id-pill { max-width: 100%; }
+          .hero { padding: 24px; border-radius: 24px; }
+          .hero-title { font-size: 28px; }
+          .logs-section { padding: 18px; }
+          .logs-head { align-items: flex-start; flex-direction: column; }
+          .log-item { align-items: flex-start; }
+          .log-time { display: none; }
         }
       `}</style>
 
@@ -590,9 +558,38 @@ export default function BotDashboard({
                 <span>Meus Bots</span>
               </Link>
             </div>
-
-            <div className="id-pill">ID: {botId || "carregando..."}</div>
+            <div className="top-right">
+              <div className="id-pill">ID: {botId || "carregando..."}</div>
+            </div>
           </header>
+
+          {/* ── Avisos admin ── */}
+          {visibleNotices.length > 0 && (
+            <div className="notices-wrap">
+              {visibleNotices.map((n) => {
+                const c = NOTICE_COLORS[n.type];
+                return (
+                  <div
+                    key={n.id}
+                    className="notice-item"
+                    style={{ background: c.bg, border: `1px solid ${c.border}` }}
+                  >
+                    <span className="notice-icon">{c.icon}</span>
+                    <div className="notice-body">
+                      <div className="notice-title" style={{ color: c.text }}>{n.title}</div>
+                      <div className="notice-message">{n.message}</div>
+                    </div>
+                    <button
+                      className="notice-dismiss"
+                      onClick={() => setDismissedNotices((prev) => new Set([...prev, n.id]))}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <section className="hero">
             <div className="hero-content">
@@ -601,9 +598,7 @@ export default function BotDashboard({
                   <span className="hero-dot" />
                   painel do bot
                 </div>
-
                 <h1 className="hero-title">Central de Controle</h1>
-
                 <p className="hero-sub">
                   Acesse os sistemas disponíveis, gerencie permissões e acompanhe
                   as ações recentes feitas neste bot.
@@ -615,11 +610,7 @@ export default function BotDashboard({
           <section className="modules-grid">
             {modules.map((mod) =>
               mod.active ? (
-                <Link
-                  key={mod.title}
-                  href={mod.href}
-                  className="module-card module-active"
-                >
+                <Link key={mod.title} href={mod.href} className="module-card module-active">
                   <div className="module-icon">{mod.icon}</div>
                   <h3 className="module-title">{mod.title}</h3>
                   <p className="module-desc">{mod.description}</p>
@@ -640,11 +631,8 @@ export default function BotDashboard({
             <div className="logs-head">
               <div>
                 <h2 className="logs-title">Logs Recentes</h2>
-                <p className="logs-sub">
-                  Últimas atividades registradas no painel.
-                </p>
+                <p className="logs-sub">Últimas atividades registradas no painel.</p>
               </div>
-
               <span className="logs-count">
                 {logs.length} registro{logs.length !== 1 ? "s" : ""}
               </span>
@@ -659,29 +647,18 @@ export default function BotDashboard({
               <div className="logs-list">
                 {logs.map((log) => (
                   <div key={log.id} className="log-item">
-                    <LogAvatar
-                      name={log.user?.name}
-                      avatar={log.user?.avatar}
-                    />
-
+                    <LogAvatar name={log.user?.name} avatar={log.user?.avatar} />
                     <div className="log-main">
                       <div className="log-top">
-                        <span className="log-name">
-                          {log.user?.name ?? "Desconhecido"}
-                        </span>
-
+                        <span className="log-name">{log.user?.name ?? "Desconhecido"}</span>
                         <span className="log-action">{log.action}</span>
                       </div>
-
                       {log.detail && <p className="log-detail">{log.detail}</p>}
                     </div>
-
                     <span className="log-time">
                       {new Date(log.createdAt).toLocaleString("pt-BR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
+                        day: "2-digit", month: "2-digit",
+                        hour: "2-digit", minute: "2-digit",
                       })}
                     </span>
                   </div>

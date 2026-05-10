@@ -13,6 +13,13 @@ enum BotRole {
   VIEWER
 }
 
+enum NoticeType {
+  INFO
+  WARNING
+  MAINTENANCE
+  UPDATE
+}
+
 model User {
   id        String   @id
   name      String?
@@ -37,11 +44,48 @@ model Bot {
 
   accesses  BotAccess[]
   logs      PanelLog[]
+  features  BotFeatureFlags?
 
   lastHeartbeat DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model BotFeatureFlags {
+  id           String  @id @default(cuid())
+
+  botId        String  @unique
+  bot          Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  announcements Boolean @default(true)
+  users         Boolean @default(true)
+  logs          Boolean @default(true)
+  settings      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminNotice {
+  id        String     @id @default(cuid())
+
+  title     String
+  message   String
+  type      NoticeType @default(INFO)
+  active    Boolean    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
 }
 
 model BotAccess {
