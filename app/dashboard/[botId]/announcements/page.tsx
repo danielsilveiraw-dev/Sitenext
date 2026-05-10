@@ -142,12 +142,12 @@ export default function AnnouncementsPage({
     setChannelId("");
     setChannels([]);
 
-    fetch(`/api/guilds/${guildId}/channels`)
+    fetch(`/api/guilds/${guildId}/channels?botId=${botId}`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setChannels(data);
-      });
-  }, [guildId]);
+  });
+}, [guildId, botId]);
 
   const canSend =
     access?.role === "OWNER" ||
