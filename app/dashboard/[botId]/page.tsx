@@ -1,7 +1,11 @@
-export default function Page() {
-  return (
-    <main style={{ background: "red", color: "white", minHeight: "100vh", padding: 50 }}>
-      <h1>TESTE DASHBOARD 999</h1>
-    </main>
-  );
+import DashboardClient from "./DashboardClient";
+
+export default async function BotDashboardPage({
+  params,
+}: {
+  params: Promise<{ botId: string }>;
+}) {
+  const { botId } = await params;
+
+  return <DashboardClient botId={botId} />;
 }
