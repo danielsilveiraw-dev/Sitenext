@@ -45,7 +45,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (!access) {
-      return NextResponse.json({ error: "Sem acesso ao bot" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Sem acesso ao bot" },
+        { status: 403 }
+      );
     }
 
     if (!["OWNER", "ADMIN", "EDITOR"].includes(access.role)) {
@@ -91,10 +94,12 @@ export async function POST(req: NextRequest) {
         data: {
           botId: body.botId,
           userId: user.id,
-          action: "ANÚNCIO ENVIADO",
+          category: "MESSAGE_SENT",
+          action: "MENSAGEM ENVIADA",
           detail:
             body.embed?.title ||
             body.message?.content?.slice(0, 80) ||
+            body.content?.slice?.(0, 80) ||
             null,
         },
       });

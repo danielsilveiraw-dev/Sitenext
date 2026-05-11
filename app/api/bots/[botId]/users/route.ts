@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+
 import { prisma } from "@/lib/prisma";
 
 type SessionUser = {
   id: string;
 };
+
+const VALID_ROLES = ["ADMIN", "EDITOR", "VIEWER"] as const;
+
+type AllowedRole = (typeof VALID_ROLES)[number];
 
 async function getUser() {
   const cookieStore = await cookies();
@@ -28,7 +33,10 @@ export async function GET(
     const user = await getUser();
 
     if (!user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
     }
 
     const { botId } = await params;
@@ -43,12 +51,22 @@ export async function GET(
     });
 
     if (!myAccess) {
-      return NextResponse.json({ error: "Sem acesso" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Sem acesso" },
+        { status: 403 }
+      );
     }
 
     const accesses = await prisma.botAccess.findMany({
       where: { botId },
-      orderBy: { createdAt: "asc" },
+      orderBy: [
+        {
+          role: "asc",
+        },
+        {
+          createdAt: "asc",
+        },
+      ],
       include: {
         user: {
           select: {
@@ -63,7 +81,11 @@ export async function GET(
     return NextResponse.json(accesses);
   } catch (err) {
     console.error("[bot users GET]", err);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Erro interno" },
+      { status: 500 }
+    );
   }
 }
 
@@ -75,15 +97,29 @@ export async function POST(
     const user = await getUser();
 
     if (!user?.id) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
     }
 
     const { botId } = await params;
-    const { userId, role } = await req.json();
+
+    const body = await req.json();
+
+    const userId = body.userId?.trim();
+    const role = body.role as AllowedRole;
 
     if (!userId || !role) {
       return NextResponse.json(
         { error: "userId e role são obrigatórios" },
+        { status: 400 }
+      );
+    }
+
+    if (!VALID_ROLES.includes(role)) {
+      return NextResponse.json(
+        { error: "Cargo inválido" },
         { status: 400 }
       );
     }
@@ -97,12 +133,46 @@ export async function POST(
       },
     });
 
-    if (!myAccess || (myAccess.role !== "OWNER" && myAccess.role !== "ADMIN")) {
-      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+    if (
+      !myAccess ||
+      !["OWNER", "ADMIN"].includes(myAccess.role)
+    ) {
+      return NextResponse.json(
+        { error: "Sem permissão" },
+        { status: 403 }
+      );
+    }
+
+    if (myAccess.role === "ADMIN" && role === "ADMIN") {
+      return NextResponse.json(
+        {
+          error:
+            "ADMIN não pode adicionar outro ADMIN",
+        },
+        { status: 403 }
+      );
+    }
+
+    const existing = await prisma.botAccess.findUnique({
+      where: {
+        botId_userId: {
+          botId,
+          userId,
+        },
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Usuário já possui acesso" },
+        { status: 409 }
+      );
     }
 
     await prisma.user.upsert({
-      where: { id: userId },
+      where: {
+        id: userId,
+      },
       update: {},
       create: {
         id: userId,
@@ -128,16 +198,23 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(access);
-  } catch (err: any) {
-    if (err.code === "P2002") {
-      return NextResponse.json(
-        { error: "Usuário já tem acesso" },
-        { status: 409 }
-      );
-    }
+    await prisma.panelLog.create({
+      data: {
+        botId,
+        userId: user.id,
+        category: "USER_ADDED",
+        action: "USUÁRIO ADICIONADO",
+        detail: `${access.user.name ?? access.user.id} adicionado como ${role}`,
+      },
+    });
 
+    return NextResponse.json(access);
+  } catch (err) {
     console.error("[bot users POST]", err);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Erro interno" },
+      { status: 500 }
+    );
   }
 }

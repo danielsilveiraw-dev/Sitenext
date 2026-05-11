@@ -20,6 +20,14 @@ enum NoticeType {
   UPDATE
 }
 
+enum PanelLogCategory {
+  MESSAGE_SENT
+  MESSAGE_EDITED
+  USER_ADDED
+  USER_REMOVED
+  SYSTEM
+}
+
 model User {
   id        String   @id
   name      String?
@@ -38,6 +46,9 @@ model Bot {
   name      String
   avatar    String?
   apiUrl    String?
+
+  // Cargo do Discord necessário para acessar o painel deste bot
+  requiredRoleId String?
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -106,16 +117,17 @@ model BotAccess {
 }
 
 model PanelLog {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
 
   botId     String
-  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  bot       Bot              @relation(fields: [botId], references: [id], onDelete: Cascade)
 
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  category  PanelLogCategory @default(SYSTEM)
   action    String
   detail    String?
 
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
 }
