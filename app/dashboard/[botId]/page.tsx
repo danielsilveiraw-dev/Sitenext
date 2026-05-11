@@ -117,11 +117,11 @@ function LogAvatar({
 export default function BotDashboard({
   params,
 }: {
-  params: Promise<{ botId: string }>;
+  params: { botId: string };
 }) {
   const router = useRouter();
 
-  const [botId, setBotId] = useState("");
+  const [botId, setBotId] = useState(params.botId);
 
   const [logs, setLogs] = useState<Log[]>([]);
   const [page, setPage] = useState(1);
@@ -153,50 +153,60 @@ export default function BotDashboard({
   );
 
   const loadData = useCallback(async () => {
-    const resolved = await params;
+    const currentBotId = params.botId;
 
-    setBotId(resolved.botId);
+    setBotId(currentBotId);
 
-    let logsUrl = `/api/bots/${resolved.botId}/logs?page=${page}`;
+    let logsUrl = `/api/bots/${currentBotId}/logs?page=${page}`;
 
     if (selectedCategory !== "ALL") {
       logsUrl += `&category=${selectedCategory}`;
     }
 
-    const [logsRes, noticesRes, featuresRes, accessRes] =
-      await Promise.all([
-        fetch(logsUrl, { cache: "no-store" }),
-        fetch("/api/notices"),
-        fetch(`/api/bots/${resolved.botId}/features`),
-        fetch(`/api/bots/${resolved.botId}/access`),
-      ]);
+    try {
+      const [logsRes, noticesRes, featuresRes, accessRes] =
+        await Promise.all([
+          fetch(logsUrl, { cache: "no-store" }),
+          fetch("/api/notices", { cache: "no-store" }),
+          fetch(`/api/bots/${currentBotId}/features`, { cache: "no-store" }),
+          fetch(`/api/bots/${currentBotId}/access`, { cache: "no-store" }),
+        ]);
 
-    const logsData: LogsResponse = await logsRes.json();
-    const noticesData = await noticesRes.json();
-    const featuresData = await featuresRes.json();
-    const accessData: AccessResponse = await accessRes.json();
+      if (!accessRes.ok) {
+        router.push("/dashboard");
+        return;
+      }
 
-    if (logsData?.logs) {
-      setLogs(logsData.logs);
-      setPagination(logsData.pagination);
-    } else {
+      const logsData: LogsResponse = await logsRes.json();
+      const noticesData = await noticesRes.json();
+      const featuresData = await featuresRes.json();
+      const accessData: AccessResponse = await accessRes.json();
+
+      if (logsData?.logs) {
+        setLogs(logsData.logs);
+        setPagination(logsData.pagination);
+      } else {
+        setLogs([]);
+      }
+
+      if (Array.isArray(noticesData)) {
+        setNotices(noticesData);
+      } else {
+        setNotices([]);
+      }
+
+      if (featuresData) {
+        setFeatures(featuresData);
+      }
+
+      if (accessData?.role) {
+        setUserRole(accessData.role);
+      }
+    } catch (err) {
+      console.error("[dashboard loadData]", err);
       setLogs([]);
     }
-
-    if (Array.isArray(noticesData)) {
-      setNotices(noticesData);
-    } else {
-      setNotices([]);
-    }
-
-    if (featuresData) {
-      setFeatures(featuresData);
-    }
-
-    if (accessData?.role) {
-      setUserRole(accessData.role);
-    }
-  }, [params, page, selectedCategory]);
+  }, [params.botId, page, selectedCategory, router]);
 
   useEffect(() => {
     loadData();
@@ -780,10 +790,7 @@ export default function BotDashboard({
             {modules.map((mod) => {
               if (!mod.enabled || mod.comingSoon) {
                 return (
-                  <div
-                    key={mod.key}
-                    className="module-card module-disabled"
-                  >
+                  <div key={mod.key} className="module-card module-disabled">
                     <div
                       className={`module-badge ${
                         mod.comingSoon ? "module-soon" : ""
