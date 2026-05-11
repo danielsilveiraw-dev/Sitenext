@@ -263,7 +263,7 @@ export default function BotDashboard({
 
   return (
     <>
-      <style jsx global>{`
+      <style>{`
         * {
           box-sizing: border-box;
         }
