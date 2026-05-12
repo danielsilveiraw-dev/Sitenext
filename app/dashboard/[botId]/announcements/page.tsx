@@ -9,17 +9,6 @@ type Access = {
   role: "OWNER" | "ADMIN" | "EDITOR" | "VIEWER";
 };
 
-type Log = {
-  id: string;
-  action: string;
-  detail?: string;
-  createdAt: string;
-  user?: {
-    name?: string;
-    avatar?: string;
-  };
-};
-
 type BotInfo = {
   id: string;
   name: string;
@@ -70,7 +59,6 @@ export default function AnnouncementsPage({
 
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [logs, setLogs] = useState<Log[]>([]);
 
   const [guildId, setGuildId] = useState("");
   const [channelId, setChannelId] = useState("");
@@ -90,6 +78,7 @@ export default function AnnouncementsPage({
   const [imageUrl, setImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMessageData, setLoadingMessageData] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -115,7 +104,10 @@ export default function AnnouncementsPage({
             const currentBot = data.find(
               (bot: BotInfo) => bot.id === resolved.botId
             );
-            if (currentBot) setBotInfo(currentBot);
+
+            if (currentBot) {
+              setBotInfo(currentBot);
+            }
           }
         })
         .catch(console.error);
@@ -124,13 +116,8 @@ export default function AnnouncementsPage({
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data)) setGuilds(data);
-        });
-
-      fetch(`/api/bots/${resolved.botId}/logs`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) setLogs(data);
-        });
+        })
+        .catch(console.error);
     }
 
     init();
@@ -146,22 +133,14 @@ export default function AnnouncementsPage({
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setChannels(data);
-  });
-}, [guildId, botId]);
+      })
+      .catch(console.error);
+  }, [guildId, botId]);
 
   const canSend =
     access?.role === "OWNER" ||
     access?.role === "ADMIN" ||
     access?.role === "EDITOR";
-
-  async function refreshLogs() {
-    const logsRes = await fetch(`/api/bots/${botId}/logs`);
-    const logsData = await logsRes.json();
-
-    if (Array.isArray(logsData)) {
-      setLogs(logsData);
-    }
-  }
 
   async function uploadImage(file: File) {
     if (file.size > 4 * 1024 * 1024) {
@@ -193,6 +172,62 @@ export default function AnnouncementsPage({
       alert("Erro no upload");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function loadMessageData(messageIdValue: string) {
+    if (!messageIdValue.trim() || !guildId || !channelId || !botId) {
+      return;
+    }
+
+    setLoadingMessageData(true);
+
+    try {
+      const res = await fetch("/api/get-announcement-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          botId,
+          guild_id: guildId,
+          channel_id: channelId,
+          message_id: messageIdValue,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return;
+      }
+
+      if (data.mode === "embed") {
+        setMode("embed");
+
+        setAuthor(data.embed?.author || "");
+        setTitle(data.embed?.title || "");
+        setDescription(data.embed?.description || "");
+        setFooter(data.embed?.footer || "");
+        setColor(data.embed?.color || "#7922F2");
+        setImageUrl(data.embed?.image_url || "");
+        setMessageContent("");
+      }
+
+      if (data.mode === "message") {
+        setMode("message");
+
+        setMessageContent(data.message?.content || "");
+        setImageUrl(data.message?.image_url || "");
+        setAuthor("");
+        setTitle("");
+        setDescription("");
+        setFooter("");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMessageData(false);
     }
   }
 
@@ -281,8 +316,6 @@ export default function AnnouncementsPage({
       if (data.message_id) {
         setMessageId(data.message_id);
       }
-
-      await refreshLogs();
     } catch (err) {
       console.error(err);
       alert("Erro interno");
@@ -313,7 +346,6 @@ export default function AnnouncementsPage({
       }
 
       alert("Mensagem editada com sucesso!");
-      await refreshLogs();
     } catch (err) {
       console.error(err);
       alert("Erro interno");
@@ -454,7 +486,8 @@ export default function AnnouncementsPage({
             <h1 className="loading-title">Verificando acesso</h1>
 
             <p className="loading-sub">
-              Validando permissões do usuário e carregando os sistemas disponíveis do painel.
+              Validando permissões do usuário e carregando os sistemas
+              disponíveis do painel.
             </p>
 
             <div className="loading-status">
@@ -613,6 +646,7 @@ export default function AnnouncementsPage({
           font-weight: 800;
           color: rgba(255, 255, 255, 0.72);
           transition: 0.2s;
+          text-decoration: none;
         }
 
         .back-btn:hover {
@@ -636,7 +670,9 @@ export default function AnnouncementsPage({
                   Anúncios
                 </p>
 
-                <h1 className="text-4xl font-black leading-none">{botName}</h1>
+                <h1 className="text-4xl font-black leading-none">
+                  {botName}
+                </h1>
 
                 <div className="role-pill">
                   <span className="role-dot" />
@@ -659,6 +695,7 @@ export default function AnnouncementsPage({
                       ? "Criar anúncio"
                       : "Editar mensagem"}
                   </h2>
+
                   <p className="mt-1 text-sm text-white/40">
                     {actionMode === "create"
                       ? "Envie uma nova mensagem para um canal."
@@ -693,7 +730,8 @@ export default function AnnouncementsPage({
 
               {!canSend && (
                 <div className="mb-5 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200">
-                  Você está como VIEWER. Pode visualizar, mas não pode enviar ou editar anúncios.
+                  Você está como VIEWER. Pode visualizar, mas não pode enviar
+                  ou editar anúncios.
                 </div>
               )}
 
@@ -701,12 +739,14 @@ export default function AnnouncementsPage({
                 <label className="mb-2 block text-sm text-white/50">
                   Servidor
                 </label>
+
                 <select
                   value={guildId}
                   onChange={(e) => setGuildId(e.target.value)}
                   className="field w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-white"
                 >
                   <option value="">Selecione</option>
+
                   {guilds.map((guild) => (
                     <option key={guild.id} value={guild.id}>
                       {guild.name}
@@ -719,12 +759,14 @@ export default function AnnouncementsPage({
                 <label className="mb-2 block text-sm text-white/50">
                   Canal
                 </label>
+
                 <select
                   value={channelId}
                   onChange={(e) => setChannelId(e.target.value)}
                   className="field w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-white"
                 >
                   <option value="">Selecione</option>
+
                   {channels.map((channel) => (
                     <option key={channel.id} value={channel.id}>
                       #{channel.name}
@@ -738,15 +780,32 @@ export default function AnnouncementsPage({
                   <label className="mb-2 block text-sm text-white/50">
                     ID da mensagem
                   </label>
+
                   <input
                     value={messageId}
-                    onChange={(e) => setMessageId(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      setMessageId(value);
+
+                      if (value.length >= 17) {
+                        loadMessageData(value);
+                      }
+                    }}
                     placeholder="Ex: 1234567890123456789"
                     className="field w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-white placeholder:text-white/20"
                   />
+
                   <p className="mt-2 text-xs text-white/35">
-                    Ative o modo desenvolvedor no Discord, clique com botão direito na mensagem e copie o ID.
+                    Ative o modo desenvolvedor no Discord, clique com botão
+                    direito na mensagem e copie o ID.
                   </p>
+
+                  {loadingMessageData && (
+                    <p className="mt-2 text-xs text-[#95FE59]">
+                      Buscando mensagem...
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -791,6 +850,7 @@ export default function AnnouncementsPage({
                     <label className="mb-2 block text-sm text-white/50">
                       Descrição
                     </label>
+
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
@@ -805,12 +865,14 @@ export default function AnnouncementsPage({
                       <label className="mb-2 block text-sm text-white/50">
                         Cor
                       </label>
+
                       <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                         <input
                           type="color"
                           value={color}
                           onChange={(e) => setColor(e.target.value)}
                         />
+
                         <span className="text-white/50">{color}</span>
                       </div>
                     </div>
@@ -821,6 +883,7 @@ export default function AnnouncementsPage({
                   <label className="mb-2 block text-sm text-white/50">
                     Mensagem
                   </label>
+
                   <textarea
                     value={messageContent}
                     onChange={(e) => setMessageContent(e.target.value)}
@@ -839,6 +902,7 @@ export default function AnnouncementsPage({
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
+
                     if (file) uploadImage(file);
                   }}
                   className="field w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-white"
@@ -888,14 +952,13 @@ export default function AnnouncementsPage({
                       name={botName}
                       avatar={botAvatar}
                       className={
-                        botAvatar
-                          ? "preview-avatar"
-                          : "preview-avatar-fallback"
+                        botAvatar ? "preview-avatar" : "preview-avatar-fallback"
                       }
                     />
 
                     <div>
                       <div className="font-bold text-[#95FE59]">{botName}</div>
+
                       <div className="text-xs text-white/30">
                         BOT • {actionMode === "create" ? "Agora" : "Editando"}
                       </div>
@@ -917,7 +980,9 @@ export default function AnnouncementsPage({
                         )}
 
                         {title && (
-                          <div className="mb-2 text-lg font-black">{title}</div>
+                          <div className="mb-2 text-lg font-black">
+                            {title}
+                          </div>
                         )}
 
                         <div className="whitespace-pre-wrap text-sm text-white/70">
@@ -958,32 +1023,19 @@ export default function AnnouncementsPage({
               </div>
 
               <div className="card rounded-3xl p-7">
-                <h2 className="mb-4 text-xl font-black">Logs recentes</h2>
+                <h2 className="mb-3 text-xl font-black">Logs do painel</h2>
 
-                <div className="space-y-3">
-                  {logs.length === 0 && (
-                    <p className="text-sm text-white/40">
-                      Nenhum log encontrado.
-                    </p>
-                  )}
+                <p className="text-sm leading-6 text-white/40">
+                  Os logs foram movidos para uma página dedicada dentro da
+                  central do bot.
+                </p>
 
-                  {logs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                    >
-                      <div className="font-bold">
-                        {log.user?.name || "Usuário"}
-                      </div>
-                      <div className="text-sm text-white/50">{log.action}</div>
-                      {log.detail && (
-                        <div className="mt-1 text-xs text-white/35">
-                          {log.detail}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <a
+                  href={`/dashboard/${botId}/logs`}
+                  className="mt-5 inline-flex rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white/70 transition hover:border-[#7922F2]/40 hover:bg-[#7922F2]/10 hover:text-white"
+                >
+                  Abrir logs →
+                </a>
               </div>
             </div>
           </div>

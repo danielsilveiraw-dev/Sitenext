@@ -74,10 +74,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!bot) {
-      return NextResponse.json(
-        { error: "Bot não encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Bot não encontrado" }, { status: 404 });
     }
 
     if (!bot.apiUrl) {
@@ -103,7 +100,8 @@ export async function POST(req: NextRequest) {
         data: {
           botId: body.botId,
           userId: user.id,
-          action: "ANÚNCIO EDITADO",
+          category: "MESSAGE_EDITED",
+          action: "MENSAGEM EDITADA",
           detail:
             body.embed?.title ||
             body.message?.content?.slice(0, 80) ||
