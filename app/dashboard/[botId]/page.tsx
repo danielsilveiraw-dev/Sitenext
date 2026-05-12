@@ -30,13 +30,6 @@ type LogsResponse = {
   };
 };
 
-type Notice = {
-  id: string;
-  title: string;
-  message: string;
-  type: "INFO" | "WARNING" | "MAINTENANCE" | "UPDATE";
-};
-
 type Features = {
   announcements: boolean;
   users: boolean;
@@ -48,33 +41,6 @@ type AccessRole = "OWNER" | "ADMIN" | "EDITOR" | "VIEWER";
 
 type AccessResponse = {
   role: AccessRole;
-};
-
-const NOTICE_COLORS = {
-  INFO: {
-    bg: "rgba(180,124,255,0.10)",
-    border: "rgba(180,124,255,0.25)",
-    text: "#b47cff",
-    icon: "ℹ",
-  },
-  WARNING: {
-    bg: "rgba(251,191,36,0.10)",
-    border: "rgba(251,191,36,0.25)",
-    text: "#fbbf24",
-    icon: "⚠",
-  },
-  MAINTENANCE: {
-    bg: "rgba(248,113,113,0.10)",
-    border: "rgba(248,113,113,0.25)",
-    text: "#f87171",
-    icon: "🔧",
-  },
-  UPDATE: {
-    bg: "rgba(87,242,135,0.10)",
-    border: "rgba(87,242,135,0.25)",
-    text: "#57f287",
-    icon: "🚀",
-  },
 };
 
 const CATEGORY_LABELS = {
@@ -97,7 +63,23 @@ function LogAvatar({
 
   if (!avatar || imageError) {
     return (
-      <div className="log-avatar-fallback">
+      <div
+        style={{
+          width: 54,
+          height: 54,
+          borderRadius: "50%",
+          background:
+            "linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: 800,
+          color: "white",
+          flexShrink: 0,
+          fontSize: 18,
+          boxShadow: "0 0 25px rgba(124,58,237,0.35)",
+        }}
+      >
         {name?.[0]?.toUpperCase() ?? "?"}
       </div>
     );
@@ -107,9 +89,16 @@ function LogAvatar({
     <img
       src={avatar}
       alt={name ?? "Usuário"}
-      className="log-avatar"
       referrerPolicy="no-referrer"
       onError={() => setImageError(true)}
+      style={{
+        width: 54,
+        height: 54,
+        borderRadius: "50%",
+        objectFit: "cover",
+        border: "2px solid rgba(255,255,255,0.08)",
+        flexShrink: 0,
+      }}
     />
   );
 }
@@ -136,9 +125,8 @@ export default function BotDashboard() {
     hasPreviousPage: false,
   });
 
-  const [notices, setNotices] = useState<Notice[]>([]);
-
-  const [userRole, setUserRole] = useState<AccessRole>("VIEWER");
+  const [userRole, setUserRole] =
+    useState<AccessRole>("VIEWER");
 
   const [features, setFeatures] = useState<Features>({
     announcements: true,
@@ -146,10 +134,6 @@ export default function BotDashboard() {
     logs: true,
     settings: true,
   });
-
-  const [dismissedNotices, setDismissedNotices] = useState<Set<string>>(
-    new Set()
-  );
 
   const loadData = useCallback(async () => {
     const currentBotId = String(params.botId);
@@ -163,10 +147,9 @@ export default function BotDashboard() {
     }
 
     try {
-      const [logsRes, noticesRes, featuresRes, accessRes] =
+      const [logsRes, featuresRes, accessRes] =
         await Promise.all([
           fetch(logsUrl, { cache: "no-store" }),
-          fetch("/api/notices", { cache: "no-store" }),
           fetch(`/api/bots/${currentBotId}/features`, {
             cache: "no-store",
           }),
@@ -181,21 +164,15 @@ export default function BotDashboard() {
       }
 
       const logsData: LogsResponse = await logsRes.json();
-      const noticesData = await noticesRes.json();
       const featuresData = await featuresRes.json();
-      const accessData: AccessResponse = await accessRes.json();
+      const accessData: AccessResponse =
+        await accessRes.json();
 
       if (logsData?.logs) {
         setLogs(logsData.logs);
         setPagination(logsData.pagination);
       } else {
         setLogs([]);
-      }
-
-      if (Array.isArray(noticesData)) {
-        setNotices(noticesData);
-      } else {
-        setNotices([]);
       }
 
       if (featuresData) {
@@ -219,14 +196,15 @@ export default function BotDashboard() {
     <main
       style={{
         minHeight: "100vh",
-        background: "#050505",
+        background:
+          "radial-gradient(circle at top left, rgba(91,33,182,0.35), transparent 35%), radial-gradient(circle at bottom right, rgba(34,197,94,0.15), transparent 30%), #050505",
         color: "white",
-        padding: "24px",
+        padding: "32px 20px",
       }}
     >
       <div
         style={{
-          maxWidth: "1100px",
+          maxWidth: "1200px",
           margin: "0 auto",
         }}
       >
@@ -234,8 +212,10 @@ export default function BotDashboard() {
           style={{
             display: "flex",
             justifyContent: "space-between",
-            marginBottom: "24px",
             alignItems: "center",
+            marginBottom: "28px",
+            gap: 16,
+            flexWrap: "wrap",
           }}
         >
           <Link
@@ -243,69 +223,161 @@ export default function BotDashboard() {
             style={{
               color: "#b47cff",
               textDecoration: "none",
-              fontWeight: "bold",
+              fontWeight: 700,
+              fontSize: 15,
             }}
           >
             ← Voltar
           </Link>
 
-          <div>
-            <strong>{userRole}</strong>
+          <div
+            style={{
+              padding: "10px 18px",
+              borderRadius: 999,
+              background: "rgba(124,58,237,0.18)",
+              border: "1px solid rgba(124,58,237,0.3)",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "#d8b4fe",
+              backdropFilter: "blur(20px)",
+            }}
+          >
+            {userRole}
           </div>
         </div>
 
         <div
           style={{
+            position: "relative",
+            overflow: "hidden",
+            borderRadius: 32,
+            padding: "42px",
+            marginBottom: 28,
             border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "24px",
-            padding: "28px",
-            background: "rgba(255,255,255,0.03)",
-            marginBottom: "24px",
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))",
+            backdropFilter: "blur(30px)",
+            boxShadow:
+              "0 20px 80px rgba(0,0,0,0.45)",
           }}
         >
-          <h1
+          <div
             style={{
-              margin: 0,
-              fontSize: "34px",
-              fontWeight: 900,
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(circle at top right, rgba(124,58,237,0.25), transparent 30%)",
+              pointerEvents: "none",
             }}
-          >
-            Central do Bot
-          </h1>
+          />
 
-          <p
-            style={{
-              marginTop: "12px",
-              color: "rgba(255,255,255,0.55)",
-            }}
-          >
-            Gerencie anúncios, usuários e logs do bot.
-          </p>
+          <div style={{ position: "relative", zIndex: 2 }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 16,
+                padding: "8px 14px",
+                borderRadius: 999,
+                background: "rgba(124,58,237,0.14)",
+                border:
+                  "1px solid rgba(124,58,237,0.25)",
+                color: "#c084fc",
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: 1,
+              }}
+            >
+              PAINEL MULTI-BOTS
+            </div>
+
+            <h1
+              style={{
+                margin: 0,
+                fontSize: "56px",
+                fontWeight: 900,
+                lineHeight: 1,
+              }}
+            >
+              Central do Bot
+            </h1>
+
+            <p
+              style={{
+                marginTop: 18,
+                maxWidth: 700,
+                color: "rgba(255,255,255,0.6)",
+                fontSize: 18,
+                lineHeight: 1.6,
+              }}
+            >
+              Gerencie anúncios, permissões e logs do bot
+              em um painel moderno e organizado.
+            </p>
+          </div>
         </div>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-            gap: "16px",
-            marginBottom: "24px",
+            gridTemplateColumns:
+              "repeat(auto-fit,minmax(320px,1fr))",
+            gap: 22,
+            marginBottom: 30,
           }}
         >
           {features.announcements &&
-            ["OWNER", "ADMIN", "EDITOR"].includes(userRole) && (
+            ["OWNER", "ADMIN", "EDITOR"].includes(
+              userRole
+            ) && (
               <Link
                 href={`/dashboard/${botId}/announcements`}
                 style={{
-                  padding: "24px",
-                  borderRadius: "20px",
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  position: "relative",
+                  overflow: "hidden",
+                  padding: 30,
+                  borderRadius: 28,
+                  background:
+                    "linear-gradient(135deg, rgba(124,58,237,0.15), rgba(255,255,255,0.03))",
+                  border:
+                    "1px solid rgba(255,255,255,0.08)",
                   textDecoration: "none",
                   color: "white",
+                  transition: "0.2s",
+                  boxShadow:
+                    "0 10px 40px rgba(0,0,0,0.25)",
                 }}
               >
-                <h2>📢 Anúncios</h2>
-                <p>Criar embeds e mensagens.</p>
+                <div
+                  style={{
+                    fontSize: 42,
+                    marginBottom: 18,
+                  }}
+                >
+                  📢
+                </div>
+
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 28,
+                    fontWeight: 800,
+                  }}
+                >
+                  Anúncios
+                </h2>
+
+                <p
+                  style={{
+                    marginTop: 12,
+                    color: "rgba(255,255,255,0.6)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Crie embeds, mensagens e avisos
+                  profissionais para o servidor.
+                </p>
               </Link>
             )}
 
@@ -314,16 +386,50 @@ export default function BotDashboard() {
               <Link
                 href={`/dashboard/${botId}/users`}
                 style={{
-                  padding: "24px",
-                  borderRadius: "20px",
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  position: "relative",
+                  overflow: "hidden",
+                  padding: 30,
+                  borderRadius: 28,
+                  background:
+                    "linear-gradient(135deg, rgba(34,197,94,0.12), rgba(255,255,255,0.03))",
+                  border:
+                    "1px solid rgba(255,255,255,0.08)",
                   textDecoration: "none",
                   color: "white",
+                  transition: "0.2s",
+                  boxShadow:
+                    "0 10px 40px rgba(0,0,0,0.25)",
                 }}
               >
-                <h2>👥 Usuários</h2>
-                <p>Gerencie acessos ao painel.</p>
+                <div
+                  style={{
+                    fontSize: 42,
+                    marginBottom: 18,
+                  }}
+                >
+                  👥
+                </div>
+
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 28,
+                    fontWeight: 800,
+                  }}
+                >
+                  Usuários
+                </h2>
+
+                <p
+                  style={{
+                    marginTop: 12,
+                    color: "rgba(255,255,255,0.6)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Controle permissões e acessos ao
+                  painel do bot.
+                </p>
               </Link>
             )}
         </div>
@@ -331,52 +437,93 @@ export default function BotDashboard() {
         {canViewLogs(userRole) && (
           <div
             style={{
+              borderRadius: 32,
+              padding: 30,
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))",
               border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "24px",
-              padding: "24px",
-              background: "rgba(255,255,255,0.03)",
+              backdropFilter: "blur(30px)",
+              boxShadow:
+                "0 20px 80px rgba(0,0,0,0.35)",
             }}
           >
-            <h2>Logs Recentes</h2>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 14,
+                marginBottom: 22,
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 30,
+                    fontWeight: 800,
+                  }}
+                >
+                  Logs Recentes
+                </h2>
+
+                <p
+                  style={{
+                    marginTop: 10,
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  Histórico de ações realizadas no
+                  painel.
+                </p>
+              </div>
+            </div>
 
             <div
               style={{
                 display: "flex",
-                gap: "10px",
+                gap: 10,
                 flexWrap: "wrap",
-                marginTop: "16px",
-                marginBottom: "20px",
+                marginBottom: 28,
               }}
             >
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setSelectedCategory(key);
-                    setPage(1);
-                  }}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: "999px",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background:
-                      selectedCategory === key
-                        ? "rgba(121,34,242,0.3)"
-                        : "rgba(255,255,255,0.03)",
-                    color: "white",
-                    cursor: "pointer",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
+              {Object.entries(CATEGORY_LABELS).map(
+                ([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setSelectedCategory(key);
+                      setPage(1);
+                    }}
+                    style={{
+                      padding: "12px 18px",
+                      borderRadius: 999,
+                      border:
+                        selectedCategory === key
+                          ? "1px solid rgba(124,58,237,0.45)"
+                          : "1px solid rgba(255,255,255,0.08)",
+                      background:
+                        selectedCategory === key
+                          ? "linear-gradient(135deg, rgba(124,58,237,0.35), rgba(147,51,234,0.18))"
+                          : "rgba(255,255,255,0.03)",
+                      color: "white",
+                      cursor: "pointer",
+                      fontWeight: 700,
+                      transition: "0.2s",
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              )}
             </div>
 
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "12px",
+                gap: 18,
               }}
             >
               {logs.map((log) => (
@@ -384,12 +531,14 @@ export default function BotDashboard() {
                   key={log.id}
                   style={{
                     display: "flex",
-                    gap: "14px",
+                    gap: 18,
                     alignItems: "center",
-                    padding: "14px",
-                    borderRadius: "16px",
-                    background: "rgba(0,0,0,0.18)",
-                    border: "1px solid rgba(255,255,255,0.05)",
+                    padding: 20,
+                    borderRadius: 24,
+                    background:
+                      "rgba(255,255,255,0.025)",
+                    border:
+                      "1px solid rgba(255,255,255,0.05)",
                   }}
                 >
                   <LogAvatar
@@ -398,24 +547,45 @@ export default function BotDashboard() {
                   />
 
                   <div style={{ flex: 1 }}>
-                    <strong>
-                      {log.user?.name ?? "Desconhecido"}
-                    </strong>
-
                     <div
                       style={{
-                        marginTop: "4px",
-                        color: "rgba(255,255,255,0.6)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        flexWrap: "wrap",
                       }}
                     >
-                      {log.action}
+                      <strong
+                        style={{
+                          fontSize: 17,
+                        }}
+                      >
+                        {log.user?.name ??
+                          "Desconhecido"}
+                      </strong>
+
+                      <span
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          background:
+                            "rgba(124,58,237,0.15)",
+                          color: "#c084fc",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {log.action}
+                      </span>
                     </div>
 
                     {log.detail && (
                       <div
                         style={{
-                          marginTop: "4px",
-                          color: "rgba(255,255,255,0.4)",
+                          marginTop: 10,
+                          color:
+                            "rgba(255,255,255,0.55)",
+                          lineHeight: 1.5,
                         }}
                       >
                         {log.detail}
@@ -425,11 +595,14 @@ export default function BotDashboard() {
 
                   <div
                     style={{
-                      fontSize: "12px",
-                      color: "rgba(255,255,255,0.4)",
+                      fontSize: 12,
+                      color: "rgba(255,255,255,0.35)",
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    {new Date(log.createdAt).toLocaleString("pt-BR")}
+                    {new Date(
+                      log.createdAt
+                    ).toLocaleString("pt-BR")}
                   </div>
                 </div>
               ))}
@@ -439,25 +612,61 @@ export default function BotDashboard() {
               style={{
                 display: "flex",
                 justifyContent: "center",
-                gap: "12px",
-                marginTop: "24px",
+                alignItems: "center",
+                gap: 18,
+                marginTop: 32,
               }}
             >
               <button
                 disabled={!pagination.hasPreviousPage}
-                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                onClick={() =>
+                  setPage((prev) =>
+                    Math.max(prev - 1, 1)
+                  )
+                }
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  border:
+                    "1px solid rgba(255,255,255,0.08)",
+                  background:
+                    "rgba(255,255,255,0.03)",
+                  color: "white",
+                  cursor: "pointer",
+                  fontSize: 18,
+                }}
               >
                 ←
               </button>
 
-              <span>
+              <div
+                style={{
+                  color: "rgba(255,255,255,0.55)",
+                  fontWeight: 600,
+                }}
+              >
                 Página {pagination.page} de{" "}
                 {pagination.totalPages || 1}
-              </span>
+              </div>
 
               <button
                 disabled={!pagination.hasNextPage}
-                onClick={() => setPage((prev) => prev + 1)}
+                onClick={() =>
+                  setPage((prev) => prev + 1)
+                }
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  border:
+                    "1px solid rgba(255,255,255,0.08)",
+                  background:
+                    "rgba(255,255,255,0.03)",
+                  color: "white",
+                  cursor: "pointer",
+                  fontSize: 18,
+                }}
               >
                 →
               </button>
