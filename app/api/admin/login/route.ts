@@ -6,16 +6,25 @@ export async function POST(req: NextRequest) {
   try {
     const { discordId, password, totpCode } = await req.json();
 
-    if (discordId !== process.env.ADMIN_DISCORD_ID) {
+    const allowedAdmins = (process.env.ADMIN_DISCORD_IDS ||
+      process.env.ADMIN_DISCORD_ID ||
+      "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    if (!allowedAdmins.includes(discordId)) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
     const passwordOk = password === process.env.ADMIN_PASSWORD;
+
     if (!passwordOk) {
       return NextResponse.json({ error: "Senha incorreta" }, { status: 403 });
     }
 
     const secret = process.env.ADMIN_TOTP_SECRET;
+
     if (!secret) {
       return NextResponse.json(
         { error: "2FA não configurado. Acesse /admin/setup primeiro." },
@@ -24,19 +33,28 @@ export async function POST(req: NextRequest) {
     }
 
     const validCode = generateTOTP(secret);
-    // Aceita o código atual e o anterior (tolerância de 30s)
     const prevCode = generateTOTP(secret);
+
     if (totpCode !== validCode && totpCode !== prevCode) {
-      return NextResponse.json({ error: "Código 2FA inválido" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Código 2FA inválido" },
+        { status: 403 }
+      );
     }
 
     const token = jwt.sign(
-      { adminId: discordId, role: "admin" },
+      {
+        adminId: discordId,
+        role: "admin",
+      },
       process.env.ADMIN_JWT_SECRET!,
-      { expiresIn: "8h" }
+      {
+        expiresIn: "8h",
+      }
     );
 
     const res = NextResponse.json({ success: true });
+
     res.cookies.set("admin_session", token, {
       httpOnly: true,
       secure: true,
@@ -48,6 +66,10 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (err) {
     console.error("[ADMIN-LOGIN]", err);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Erro interno" },
+      { status: 500 }
+    );
   }
 }
