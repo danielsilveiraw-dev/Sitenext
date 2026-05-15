@@ -43,6 +43,15 @@ type AccessResponse = {
   role: AccessRole;
 };
 
+type AdminNotice = {
+  id: string;
+  title: string;
+  message: string;
+  type: "INFO" | "WARNING" | "MAINTENANCE" | "UPDATE";
+  active: boolean;
+  createdAt: string;
+};
+
 const CATEGORY_LABELS: Record<string, string> = {
   ALL: "Todos",
   MESSAGE_SENT: "Mensagens",
@@ -110,6 +119,7 @@ export default function BotDashboard() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [page, setPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [adminNotices, setAdminNotices] = useState<AdminNotice[]>([]);
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -141,10 +151,11 @@ export default function BotDashboard() {
     }
 
     try {
-      const [logsRes, featuresRes, accessRes] = await Promise.all([
+      const [logsRes, featuresRes, accessRes, noticesRes] = await Promise.all([
         fetch(logsUrl, { cache: "no-store" }),
         fetch(`/api/bots/${currentBotId}/features`, { cache: "no-store" }),
         fetch(`/api/bots/${currentBotId}/access`, { cache: "no-store" }),
+        fetch("/api/admin/notices", { cache: "no-store" }),
       ]);
 
       if (!accessRes.ok) {
@@ -155,6 +166,7 @@ export default function BotDashboard() {
       const logsData: LogsResponse = await logsRes.json();
       const featuresData = await featuresRes.json();
       const accessData: AccessResponse = await accessRes.json();
+      const noticesData = await noticesRes.json();
 
       if (logsData?.logs) {
         setLogs(logsData.logs);
@@ -170,9 +182,18 @@ export default function BotDashboard() {
       if (accessData?.role) {
         setUserRole(accessData.role);
       }
+
+      if (Array.isArray(noticesData)) {
+        setAdminNotices(
+          noticesData.filter((notice: AdminNotice) => notice.active)
+        );
+      } else {
+        setAdminNotices([]);
+      }
     } catch (err) {
       console.error("[dashboard loadData]", err);
       setLogs([]);
+      setAdminNotices([]);
     }
   }, [params, page, selectedCategory, router]);
 
@@ -186,7 +207,8 @@ export default function BotDashboard() {
       href: `/dashboard/${botId}/announcements`,
       icon: "📢",
       title: "Anúncios",
-      description: "Crie embeds, mensagens e avisos personalizados para seus servidores.",
+      description:
+        "Crie embeds, mensagens e avisos personalizados para seus servidores.",
       enabled:
         features.announcements &&
         ["OWNER", "ADMIN", "EDITOR"].includes(userRole),
@@ -197,7 +219,8 @@ export default function BotDashboard() {
       href: `/dashboard/${botId}/users`,
       icon: "👥",
       title: "Usuários",
-      description: "Gerencie quem pode acessar este bot e os níveis de permissão.",
+      description:
+        "Gerencie quem pode acessar este bot e os níveis de permissão.",
       enabled: features.users && ["OWNER", "ADMIN"].includes(userRole),
       footer: "GERENCIAR →",
     },
@@ -433,6 +456,59 @@ export default function BotDashboard() {
           font-size: 12px;
           line-height: 1.55;
           color: rgba(255,255,255,0.38);
+        }
+
+        .admin-notices {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          margin-bottom: 28px;
+        }
+
+        .admin-notice {
+          border-radius: 24px;
+          padding: 20px;
+          backdrop-filter: blur(12px);
+        }
+
+        .admin-notice-info {
+          border: 1px solid rgba(180,124,255,0.2);
+          background: rgba(180,124,255,0.08);
+        }
+
+        .admin-notice-warning {
+          border: 1px solid rgba(251,191,36,0.2);
+          background: rgba(251,191,36,0.08);
+        }
+
+        .admin-notice-maintenance {
+          border: 1px solid rgba(248,113,113,0.2);
+          background: rgba(248,113,113,0.08);
+        }
+
+        .admin-notice-update {
+          border: 1px solid rgba(87,242,135,0.2);
+          background: rgba(87,242,135,0.08);
+        }
+
+        .admin-notice-title {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 10px;
+          font-weight: 900;
+          font-size: 16px;
+          letter-spacing: -0.02em;
+        }
+
+        .admin-notice-icon {
+          font-size: 20px;
+        }
+
+        .admin-notice-message {
+          color: rgba(255,255,255,0.72);
+          font-size: 14px;
+          line-height: 1.7;
         }
 
         .modules-grid {
@@ -866,6 +942,46 @@ export default function BotDashboard() {
             </div>
           </section>
 
+          {adminNotices.length > 0 && (
+            <section className="admin-notices">
+              {adminNotices.map((notice) => {
+                const noticeClass =
+                  notice.type === "WARNING"
+                    ? "admin-notice-warning"
+                    : notice.type === "MAINTENANCE"
+                    ? "admin-notice-maintenance"
+                    : notice.type === "UPDATE"
+                    ? "admin-notice-update"
+                    : "admin-notice-info";
+
+                const noticeIcon =
+                  notice.type === "WARNING"
+                    ? "⚠️"
+                    : notice.type === "MAINTENANCE"
+                    ? "🔧"
+                    : notice.type === "UPDATE"
+                    ? "🚀"
+                    : "ℹ️";
+
+                return (
+                  <div
+                    key={notice.id}
+                    className={`admin-notice ${noticeClass}`}
+                  >
+                    <div className="admin-notice-title">
+                      <span className="admin-notice-icon">{noticeIcon}</span>
+                      <span>{notice.title}</span>
+                    </div>
+
+                    <div className="admin-notice-message">
+                      {notice.message}
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
           <section className="modules-grid">
             {modules.map((mod) => {
               if (!mod.enabled || mod.comingSoon) {
@@ -884,7 +1000,11 @@ export default function BotDashboard() {
               }
 
               return (
-                <Link key={mod.key} href={mod.href} className="module-card module-active">
+                <Link
+                  key={mod.key}
+                  href={mod.href}
+                  className="module-card module-active"
+                >
                   <div className="module-icon">{mod.icon}</div>
                   <h3 className="module-title">{mod.title}</h3>
                   <p className="module-desc">{mod.description}</p>
