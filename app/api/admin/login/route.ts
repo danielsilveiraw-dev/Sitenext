@@ -2,40 +2,58 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { generateTOTP } from "../setup-totp/route";
 
+type AdminStaff = {
+  discordId: string;
+  password: string;
+  secret: string;
+};
+
+function getAdminStaffs(): AdminStaff[] {
+  return (process.env.ADMIN_STAFFS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const [discordId, password, secret] = item.split(":");
+
+      return {
+        discordId: discordId?.trim(),
+        password: password?.trim(),
+        secret: secret?.trim(),
+      };
+    })
+    .filter((staff) => staff.discordId && staff.password && staff.secret);
+}
+
+function getValidTotpCodes(secret: string) {
+  const now = Math.floor(Date.now() / 1000 / 30);
+
+  return [
+    generateTOTP(secret, now),
+    generateTOTP(secret, now - 1),
+    generateTOTP(secret, now + 1),
+  ];
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { discordId, password, totpCode } = await req.json();
 
-    const allowedAdmins = (process.env.ADMIN_DISCORD_IDS ||
-      process.env.ADMIN_DISCORD_ID ||
-      "")
-      .split(",")
-      .map((id) => id.trim())
-      .filter(Boolean);
+    const staffList = getAdminStaffs();
 
-    if (!allowedAdmins.includes(discordId)) {
+    const staff = staffList.find((item) => item.discordId === discordId);
+
+    if (!staff) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
-    const passwordOk = password === process.env.ADMIN_PASSWORD;
-
-    if (!passwordOk) {
+    if (password !== staff.password) {
       return NextResponse.json({ error: "Senha incorreta" }, { status: 403 });
     }
 
-    const secret = process.env.ADMIN_TOTP_SECRET;
+    const validCodes = getValidTotpCodes(staff.secret);
 
-    if (!secret) {
-      return NextResponse.json(
-        { error: "2FA não configurado. Acesse /admin/setup primeiro." },
-        { status: 400 }
-      );
-    }
-
-    const validCode = generateTOTP(secret);
-    const prevCode = generateTOTP(secret);
-
-    if (totpCode !== validCode && totpCode !== prevCode) {
+    if (!validCodes.includes(String(totpCode))) {
       return NextResponse.json(
         { error: "Código 2FA inválido" },
         { status: 403 }
@@ -67,9 +85,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("[ADMIN-LOGIN]", err);
 
-    return NextResponse.json(
-      { error: "Erro interno" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
