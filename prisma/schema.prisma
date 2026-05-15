@@ -29,45 +29,46 @@ enum PanelLogCategory {
 }
 
 model User {
-  id        String   @id
-  name      String?
-  avatar    String?
+  id     String  @id
+  name   String?
+  avatar String?
 
-  bots      Bot[]
-  accesses  BotAccess[]
-  logs      PanelLog[]
+  bots     Bot[]
+  accesses BotAccess[]
+  logs     PanelLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Bot {
-  id        String   @id
-  name      String
-  avatar    String?
-  apiUrl    String?
+  id     String  @id
+  name   String
+  avatar String?
+  apiUrl String?
 
-  // Cargo do Discord necessário para acessar o painel deste bot
   requiredRoleId String?
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  accesses  BotAccess[]
-  logs      PanelLog[]
-  features  BotFeatureFlags?
+  accesses BotAccess[]
+  logs     PanelLog[]
+  features BotFeatureFlags?
 
   lastHeartbeat DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model BotFeatureFlags {
-  id           String  @id @default(cuid())
+  id String @id @default(cuid())
 
-  botId        String  @unique
-  bot          Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
+  botId String @unique
+  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
 
   announcements Boolean @default(true)
   users         Boolean @default(true)
@@ -79,12 +80,12 @@ model BotFeatureFlags {
 }
 
 model AdminNotice {
-  id        String     @id @default(cuid())
+  id String @id @default(cuid())
 
-  title     String
-  message   String
-  type      NoticeType @default(INFO)
-  active    Boolean    @default(true)
+  title   String
+  message String
+  type    NoticeType @default(INFO)
+  active  Boolean    @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -97,37 +98,47 @@ model AdminSession {
   expiresAt DateTime
 
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model BotAccess {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  botId     String
-  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  botId String
+  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  role      BotRole  @default(OWNER)
+  role BotRole @default(OWNER)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([botId, userId])
+  @@index([userId])
+  @@index([botId])
 }
 
 model PanelLog {
-  id        String           @id @default(cuid())
+  id String @id @default(cuid())
 
-  botId     String
-  bot       Bot              @relation(fields: [botId], references: [id], onDelete: Cascade)
+  botId String
+  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
 
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  category  PanelLogCategory @default(SYSTEM)
-  action    String
-  detail    String?
+  category PanelLogCategory @default(SYSTEM)
+  action   String
+  detail   String?
 
-  createdAt DateTime         @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([botId])
+  @@index([userId])
+  @@index([category])
+  @@index([createdAt])
 }
