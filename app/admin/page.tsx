@@ -340,7 +340,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* MENU EM QUADRADOS */}
         <div style={s.grid}>
 
           <div
@@ -378,7 +377,6 @@ export default function AdminPage() {
 
         </div>
 
-        {/* BOTS */}
         {selectedTab === "bots" && (
           <div style={s.card}>
             <div style={s.sectionTitle}>
@@ -499,7 +497,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* CRIAR AVISO */}
         {selectedTab === "create" && (
           <div style={s.card}>
             <div style={s.sectionTitle}>
@@ -529,20 +526,57 @@ export default function AdminPage() {
             />
 
             <select
-              style={s.input}
+              style={{
+                ...s.input,
+                background: "#111",
+                color: "#fff",
+                appearance: "none",
+                WebkitAppearance: "none",
+                MozAppearance: "none",
+                cursor: "pointer",
+              }}
               value={newType}
               onChange={(e) =>
                 setNewType(e.target.value)
               }
             >
-              <option value="INFO">ℹ Info</option>
-              <option value="UPDATE">
+              <option
+                style={{
+                  background: "#111",
+                  color: "#fff",
+                }}
+                value="INFO"
+              >
+                ℹ Info
+              </option>
+
+              <option
+                style={{
+                  background: "#111",
+                  color: "#fff",
+                }}
+                value="UPDATE"
+              >
                 🚀 Atualização
               </option>
-              <option value="WARNING">
+
+              <option
+                style={{
+                  background: "#111",
+                  color: "#fff",
+                }}
+                value="WARNING"
+              >
                 ⚠ Aviso
               </option>
-              <option value="MAINTENANCE">
+
+              <option
+                style={{
+                  background: "#111",
+                  color: "#fff",
+                }}
+                value="MAINTENANCE"
+              >
                 🔧 Manutenção
               </option>
             </select>
@@ -556,7 +590,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* AVISOS */}
         {selectedTab === "notices" && (
           <div style={s.card}>
             <div style={s.sectionTitle}>
