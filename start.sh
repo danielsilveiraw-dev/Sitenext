@@ -1,2 +1,2 @@
 #!/bin/bash
-node server.js
+npm run build && node server.js
