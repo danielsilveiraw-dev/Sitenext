@@ -1,0 +1,215 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "dynamicRoutes": [
+    {
+      "page": "/admin/bots/[botId]",
+      "regex": "^/admin/bots/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/admin/bots/(?<nxtPbotId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/admin/bots/[botId]/features",
+      "regex": "^/api/admin/bots/([^/]+?)/features(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/api/admin/bots/(?<nxtPbotId>[^/]+?)/features(?:/)?$"
+    },
+    {
+      "page": "/api/admin/bots/[botId]/users",
+      "regex": "^/api/admin/bots/([^/]+?)/users(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/api/admin/bots/(?<nxtPbotId>[^/]+?)/users(?:/)?$"
+    },
+    {
+      "page": "/api/admin/notices/[noticeId]",
+      "regex": "^/api/admin/notices/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPnoticeId": "nxtPnoticeId"
+      },
+      "namedRegex": "^/api/admin/notices/(?<nxtPnoticeId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/admin/[noticeId]",
+      "regex": "^/api/admin/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPnoticeId": "nxtPnoticeId"
+      },
+      "namedRegex": "^/api/admin/(?<nxtPnoticeId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/bots/[botId]/access",
+      "regex": "^/api/bots/([^/]+?)/access(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/api/bots/(?<nxtPbotId>[^/]+?)/access(?:/)?$"
+    },
+    {
+      "page": "/api/bots/[botId]/features",
+      "regex": "^/api/bots/([^/]+?)/features(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/api/bots/(?<nxtPbotId>[^/]+?)/features(?:/)?$"
+    },
+    {
+      "page": "/api/bots/[botId]/logs",
+      "regex": "^/api/bots/([^/]+?)/logs(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/api/bots/(?<nxtPbotId>[^/]+?)/logs(?:/)?$"
+    },
+    {
+      "page": "/api/bots/[botId]/users",
+      "regex": "^/api/bots/([^/]+?)/users(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/api/bots/(?<nxtPbotId>[^/]+?)/users(?:/)?$"
+    },
+    {
+      "page": "/api/bots/[botId]/users/[accessId]",
+      "regex": "^/api/bots/([^/]+?)/users/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId",
+        "nxtPaccessId": "nxtPaccessId"
+      },
+      "namedRegex": "^/api/bots/(?<nxtPbotId>[^/]+?)/users/(?<nxtPaccessId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/guilds/[guildId]/channels",
+      "regex": "^/api/guilds/([^/]+?)/channels(?:/)?$",
+      "routeKeys": {
+        "nxtPguildId": "nxtPguildId"
+      },
+      "namedRegex": "^/api/guilds/(?<nxtPguildId>[^/]+?)/channels(?:/)?$"
+    },
+    {
+      "page": "/dashboard/[botId]",
+      "regex": "^/dashboard/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/dashboard/(?<nxtPbotId>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/dashboard/[botId]/acess",
+      "regex": "^/dashboard/([^/]+?)/acess(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/dashboard/(?<nxtPbotId>[^/]+?)/acess(?:/)?$"
+    },
+    {
+      "page": "/dashboard/[botId]/announcements",
+      "regex": "^/dashboard/([^/]+?)/announcements(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/dashboard/(?<nxtPbotId>[^/]+?)/announcements(?:/)?$"
+    },
+    {
+      "page": "/dashboard/[botId]/logs",
+      "regex": "^/dashboard/([^/]+?)/logs(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/dashboard/(?<nxtPbotId>[^/]+?)/logs(?:/)?$"
+    },
+    {
+      "page": "/dashboard/[botId]/users",
+      "regex": "^/dashboard/([^/]+?)/users(?:/)?$",
+      "routeKeys": {
+        "nxtPbotId": "nxtPbotId"
+      },
+      "namedRegex": "^/dashboard/(?<nxtPbotId>[^/]+?)/users(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/admin",
+      "regex": "^/admin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin(?:/)?$"
+    },
+    {
+      "page": "/admin/login",
+      "regex": "^/admin/login(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/login(?:/)?$"
+    },
+    {
+      "page": "/admin/setup",
+      "regex": "^/admin/setup(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/setup(?:/)?$"
+    },
+    {
+      "page": "/auth/signin",
+      "regex": "^/auth/signin(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/signin(?:/)?$"
+    },
+    {
+      "page": "/dashboard",
+      "regex": "^/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/favicon.ico",
+      "regex": "^/favicon\\.ico(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/favicon\\.ico(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "RSC",
+    "varyHeader": "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch",
+    "prefetchHeader": "Next-Router-Prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "Next-Router-Segment-Prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  },
+  "rewrites": []
+}
