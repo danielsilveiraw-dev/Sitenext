@@ -25,10 +25,18 @@ const ROLE_COLORS: Record<BotRole, string> = {
 
 const ROLES: BotRole[] = ["ADMIN", "EDITOR", "VIEWER"];
 
-function UserAvatar({ name, avatar }: { name?: string | null; avatar?: string | null }) {
-  const [error, setError] = useState(false);
+function getDiscordAvatar(userId: string, avatarHash: string | null): string | null {
+  if (!avatarHash) return null;
+  if (avatarHash.startsWith("http")) return avatarHash;
+  const ext = avatarHash.startsWith("a_") ? "gif" : "png";
+  return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.${ext}?size=128`;
+}
 
-  if (!avatar || error) {
+function UserAvatar({ userId, name, avatar }: { userId: string; name?: string | null; avatar?: string | null }) {
+  const [error, setError] = useState(false);
+  const url = getDiscordAvatar(userId, avatar ?? null);
+
+  if (!url || error) {
     return (
       <div className="user-avatar-fallback">
         {name?.[0]?.toUpperCase() ?? "?"}
@@ -38,7 +46,7 @@ function UserAvatar({ name, avatar }: { name?: string | null; avatar?: string | 
 
   return (
     <img
-      src={avatar}
+      src={url}
       alt={name ?? "Usuário"}
       className="user-avatar"
       referrerPolicy="no-referrer"
@@ -151,9 +159,7 @@ export default function UsersPage({
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-        * {
-          box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
           margin: 0;
@@ -164,20 +170,15 @@ export default function UsersPage({
         }
 
         .bgfx {
-          position: fixed;
-          inset: 0;
+          position: fixed; inset: 0;
           background:
             radial-gradient(circle at 8% 10%, rgba(121, 34, 242, 0.18), transparent 28%),
             radial-gradient(circle at 92% 85%, rgba(149, 254, 89, 0.07), transparent 30%);
-          pointer-events: none;
-          z-index: 0;
+          pointer-events: none; z-index: 0;
         }
 
         .bg-grid {
-          position: fixed;
-          inset: 0;
-          z-index: 0;
-          pointer-events: none;
+          position: fixed; inset: 0; z-index: 0; pointer-events: none;
           opacity: 0.14;
           background-image:
             linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
@@ -186,77 +187,43 @@ export default function UsersPage({
           mask-image: linear-gradient(to bottom, black 20%, transparent 90%);
         }
 
-        .page {
-          position: relative;
-          z-index: 10;
-          min-height: 100vh;
-          padding: 24px;
-        }
-
-        .container {
-          width: 100%;
-          max-width: 1000px;
-          margin: 0 auto;
-        }
+        .page { position: relative; z-index: 10; min-height: 100vh; padding: 24px; }
+        .container { width: 100%; max-width: 1000px; margin: 0 auto; }
 
         .topbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          padding: 14px 0 24px;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 16px; padding: 14px 0 24px;
         }
 
         .back-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 9px;
-          color: rgba(255, 255, 255, 0.72);
-          font-size: 12px;
-          font-weight: 800;
-          text-decoration: none;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 999px;
-          padding: 9px 14px;
-          background: rgba(255, 255, 255, 0.035);
-          backdrop-filter: blur(12px);
+          display: inline-flex; align-items: center; gap: 9px;
+          color: rgba(255, 255, 255, 0.72); font-size: 12px; font-weight: 800;
+          text-decoration: none; border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 999px; padding: 9px 14px;
+          background: rgba(255, 255, 255, 0.035); backdrop-filter: blur(12px);
           transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.2s;
         }
-
         .back-link:hover {
-          color: #fff;
-          border-color: rgba(121, 34, 242, 0.32);
-          background: rgba(121, 34, 242, 0.08);
-          transform: translateY(-1px);
+          color: #fff; border-color: rgba(121, 34, 242, 0.32);
+          background: rgba(121, 34, 242, 0.08); transform: translateY(-1px);
         }
 
         .role-top {
-          border-radius: 999px;
-          border-width: 1px;
-          padding: 8px 13px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 0.08em;
+          border-radius: 999px; border-width: 1px; padding: 8px 13px;
+          font-family: 'JetBrains Mono', monospace; font-size: 10px;
+          font-weight: 800; letter-spacing: 0.08em;
         }
 
         .hero {
-          position: relative;
-          overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.07);
-          border-radius: 28px;
+          position: relative; overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 28px;
           background:
             linear-gradient(135deg, rgba(121, 34, 242, 0.12), rgba(255, 255, 255, 0.025)),
             rgba(255, 255, 255, 0.025);
-          backdrop-filter: blur(14px);
-          padding: 30px;
-          margin-bottom: 22px;
+          backdrop-filter: blur(14px); padding: 30px; margin-bottom: 22px;
         }
-
         .hero::before {
-          content: "";
-          position: absolute;
-          inset: 0;
+          content: ""; position: absolute; inset: 0;
           background:
             radial-gradient(circle at 88% 20%, rgba(149, 254, 89, 0.08), transparent 26%),
             radial-gradient(circle at 20% 100%, rgba(121, 34, 242, 0.18), transparent 30%);
@@ -264,356 +231,149 @@ export default function UsersPage({
         }
 
         .hero-content {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 22px;
+          position: relative; z-index: 1;
+          display: flex; align-items: center; justify-content: space-between; gap: 22px;
         }
 
         .hero-tag {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 12px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 11px;
-          color: #95fe59;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
+          display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px;
+          font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #95fe59;
+          letter-spacing: 0.16em; text-transform: uppercase;
         }
 
         .hero-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 999px;
-          background: #95fe59;
+          width: 7px; height: 7px; border-radius: 999px; background: #95fe59;
           box-shadow: 0 0 12px rgba(149, 254, 89, 0.7);
         }
 
-        .hero-title {
-          margin: 0;
-          font-size: 34px;
-          font-weight: 900;
-          letter-spacing: -0.05em;
-          line-height: 1;
-        }
-
-        .hero-sub {
-          margin: 12px 0 0;
-          max-width: 560px;
-          color: rgba(255, 255, 255, 0.42);
-          font-size: 14px;
-          line-height: 1.7;
-        }
+        .hero-title { margin: 0; font-size: 34px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+        .hero-sub { margin: 12px 0 0; max-width: 560px; color: rgba(255,255,255,0.42); font-size: 14px; line-height: 1.7; }
 
         .add-main-btn {
-          flex-shrink: 0;
-          border: none;
-          border-radius: 16px;
-          padding: 13px 18px;
+          flex-shrink: 0; border: none; border-radius: 16px; padding: 13px 18px;
           background: linear-gradient(135deg, #7922f2, #95fe59);
-          color: #050505;
-          font-size: 13px;
-          font-weight: 900;
-          cursor: pointer;
+          color: #050505; font-size: 13px; font-weight: 900; cursor: pointer;
           transition: opacity 0.2s, transform 0.2s;
           box-shadow: 0 12px 30px rgba(121, 34, 242, 0.22);
         }
+        .add-main-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
-        .add-main-btn:hover {
-          opacity: 0.9;
-          transform: translateY(-1px);
-        }
-
-        .card {
-          background: rgba(255, 255, 255, 0.025);
-          border: 1px solid rgba(255, 255, 255, 0.07);
-          backdrop-filter: blur(14px);
-        }
-
-        .users-panel {
-          border-radius: 28px;
-          padding: 24px;
-        }
+        .card { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.07); backdrop-filter: blur(14px); }
+        .users-panel { border-radius: 28px; padding: 24px; }
 
         .panel-head {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 18px;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 16px; margin-bottom: 18px;
         }
-
-        .panel-title {
-          margin: 0;
-          font-size: 20px;
-          font-weight: 900;
-          letter-spacing: -0.03em;
-        }
-
-        .panel-sub {
-          margin: 5px 0 0;
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.35);
-        }
+        .panel-title { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -0.03em; }
+        .panel-sub { margin: 5px 0 0; font-size: 12px; color: rgba(255,255,255,0.35); }
 
         .count-pill {
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 999px;
-          padding: 7px 12px;
-          background: rgba(255, 255, 255, 0.03);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.4);
-          white-space: nowrap;
+          border: 1px solid rgba(255,255,255,0.08); border-radius: 999px;
+          padding: 7px 12px; background: rgba(255,255,255,0.03);
+          font-family: 'JetBrains Mono', monospace; font-size: 10px;
+          color: rgba(255,255,255,0.4); white-space: nowrap;
         }
 
-        .btn {
-          background: linear-gradient(90deg, #7922f2, #95fe59);
-          transition: 0.2s;
-        }
+        .btn { background: linear-gradient(90deg, #7922f2, #95fe59); transition: 0.2s; }
+        .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        .btn:hover {
-          opacity: 0.88;
-          transform: translateY(-1px);
-        }
+        .field { transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
+        .field:focus { outline: none; border-color: #7922f2; box-shadow: 0 0 0 3px rgba(121,34,242,0.18); }
 
-        .btn:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
+        select option { background: #111; color: #fff; }
 
-        .field {
-          transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-        }
-
-        .field:focus {
-          outline: none;
-          border-color: #7922f2;
-          box-shadow: 0 0 0 3px rgba(121, 34, 242, 0.18);
-        }
-
-        select option {
-          background: #111;
-          color: #fff;
-        }
-
-        .loading-box,
-        .empty-box {
-          border: 1px dashed rgba(255, 255, 255, 0.09);
-          border-radius: 22px;
-          padding: 42px 22px;
-          text-align: center;
-          background: rgba(0, 0, 0, 0.12);
+        .loading-box, .empty-box {
+          border: 1px dashed rgba(255,255,255,0.09); border-radius: 22px;
+          padding: 42px 22px; text-align: center; background: rgba(0,0,0,0.12);
         }
 
         .loading-spinner {
-          width: 38px;
-          height: 38px;
-          margin: 0 auto 14px;
-          border-radius: 999px;
-          border: 3px solid rgba(255, 255, 255, 0.08);
-          border-top-color: #7922f2;
-          border-right-color: #95fe59;
+          width: 38px; height: 38px; margin: 0 auto 14px; border-radius: 999px;
+          border: 3px solid rgba(255,255,255,0.08);
+          border-top-color: #7922f2; border-right-color: #95fe59;
           animation: spin 1s linear infinite;
         }
 
-        .empty-icon {
-          margin-bottom: 10px;
-          font-size: 32px;
-        }
+        .empty-icon { margin-bottom: 10px; font-size: 32px; }
+        .muted-text { color: rgba(255,255,255,0.38); font-size: 13px; }
 
-        .muted-text {
-          color: rgba(255, 255, 255, 0.38);
-          font-size: 13px;
-        }
-
-        .users-list {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
+        .users-list { display: flex; flex-direction: column; gap: 10px; }
 
         .user-row {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 20px;
-          padding: 14px;
-          background: rgba(0, 0, 0, 0.16);
+          display: flex; align-items: center; gap: 14px;
+          border: 1px solid rgba(255,255,255,0.06); border-radius: 20px;
+          padding: 14px; background: rgba(0,0,0,0.16);
           transition: border-color 0.2s, background 0.2s, transform 0.2s;
         }
-
         .user-row:hover {
-          border-color: rgba(121, 34, 242, 0.22);
-          background: rgba(121, 34, 242, 0.035);
-          transform: translateY(-1px);
+          border-color: rgba(121,34,242,0.22);
+          background: rgba(121,34,242,0.035); transform: translateY(-1px);
         }
 
-        .user-avatar,
-        .user-avatar-fallback {
-          width: 46px;
-          height: 46px;
-          flex-shrink: 0;
-          border-radius: 999px;
+        .user-avatar, .user-avatar-fallback {
+          width: 46px; height: 46px; flex-shrink: 0; border-radius: 999px;
         }
-
         .user-avatar {
-          object-fit: cover;
-          background: rgba(121, 34, 242, 0.18);
-          border: 1px solid rgba(121, 34, 242, 0.25);
+          object-fit: cover; background: rgba(121,34,242,0.18);
+          border: 1px solid rgba(121,34,242,0.25);
         }
-
         .user-avatar-fallback {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(121, 34, 242, 0.18);
-          border: 1px solid rgba(121, 34, 242, 0.25);
-          font-size: 15px;
-          font-weight: 900;
-          color: white;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(121,34,242,0.18); border: 1px solid rgba(121,34,242,0.25);
+          font-size: 15px; font-weight: 900; color: white;
         }
 
-        .user-main {
-          min-width: 0;
-          flex: 1;
-        }
-
-        .user-name {
-          margin: 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          font-size: 14px;
-          font-weight: 800;
-        }
-
-        .user-id {
-          margin: 4px 0 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          color: rgba(255, 255, 255, 0.28);
-        }
+        .user-main { min-width: 0; flex: 1; }
+        .user-name { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 800; }
+        .user-id { margin: 4px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.28); }
 
         .role-select {
-          border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(0, 0, 0, 0.32);
-          padding: 8px 12px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          font-weight: 800;
-          color: white;
+          border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
+          background: #1a1a1a; padding: 8px 12px;
+          font-family: 'JetBrains Mono', monospace; font-size: 10px;
+          font-weight: 800; color: white; appearance: none; cursor: pointer;
         }
 
         .remove-btn {
-          border-radius: 999px;
-          border: 1px solid rgba(248, 113, 113, 0.28);
-          background: rgba(248, 113, 113, 0.08);
-          padding: 8px 12px;
-          font-size: 11px;
-          font-weight: 800;
-          color: #f87171;
-          cursor: pointer;
+          border-radius: 999px; border: 1px solid rgba(248,113,113,0.28);
+          background: rgba(248,113,113,0.08); padding: 8px 12px;
+          font-size: 11px; font-weight: 800; color: #f87171; cursor: pointer;
           transition: background 0.2s, transform 0.2s;
         }
-
-        .remove-btn:hover {
-          background: rgba(248, 113, 113, 0.16);
-          transform: translateY(-1px);
-        }
+        .remove-btn:hover { background: rgba(248,113,113,0.16); transform: translateY(-1px); }
 
         .modal-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 50;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(0, 0, 0, 0.72);
-          padding: 20px;
-          backdrop-filter: blur(8px);
+          position: fixed; inset: 0; z-index: 50;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(0,0,0,0.72); padding: 20px; backdrop-filter: blur(8px);
         }
 
         .modal-box {
-          width: 100%;
-          max-width: 460px;
-          border-radius: 30px;
-          padding: 30px;
-          background: #0e0e0e;
-          border: 1px solid rgba(255, 255, 255, 0.09);
+          width: 100%; max-width: 460px; border-radius: 30px; padding: 30px;
+          background: #0e0e0e; border: 1px solid rgba(255,255,255,0.09);
         }
 
-        .modal-title {
-          margin: 0;
-          font-size: 24px;
-          font-weight: 900;
-          letter-spacing: -0.04em;
-        }
-
-        .modal-sub {
-          margin: 8px 0 24px;
-          font-size: 13px;
-          line-height: 1.6;
-          color: rgba(255, 255, 255, 0.38);
-        }
+        .modal-title { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.04em; }
+        .modal-sub { margin: 8px 0 24px; font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.38); }
 
         .info-box {
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 18px;
-          background: rgba(255, 255, 255, 0.025);
-          padding: 14px;
-          font-size: 12px;
-          line-height: 1.6;
-          color: rgba(255, 255, 255, 0.42);
+          border: 1px solid rgba(255,255,255,0.06); border-radius: 18px;
+          background: rgba(255,255,255,0.025); padding: 14px;
+          font-size: 12px; line-height: 1.6; color: rgba(255,255,255,0.42);
         }
 
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         @media (max-width: 760px) {
-          .page {
-            padding: 18px;
-          }
-
-          .topbar,
-          .hero-content,
-          .panel-head {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .hero {
-            padding: 24px;
-            border-radius: 24px;
-          }
-
-          .hero-title {
-            font-size: 28px;
-          }
-
-          .add-main-btn {
-            width: 100%;
-          }
-
-          .user-row {
-            align-items: flex-start;
-            flex-wrap: wrap;
-          }
-
-          .user-main {
-            min-width: 180px;
-          }
+          .page { padding: 18px; }
+          .topbar, .hero-content, .panel-head { align-items: flex-start; flex-direction: column; }
+          .hero { padding: 24px; border-radius: 24px; }
+          .hero-title { font-size: 28px; }
+          .add-main-btn { width: 100%; }
+          .user-row { align-items: flex-start; flex-wrap: wrap; }
+          .user-main { min-width: 180px; }
         }
       `}</style>
 
@@ -642,9 +402,7 @@ export default function UsersPage({
                   <span className="hero-dot" />
                   permissões do bot
                 </div>
-
                 <h1 className="hero-title">Gerenciar usuários</h1>
-
                 <p className="hero-sub">
                   Controle quem pode acessar o painel deste bot e defina o nível
                   de permissão de cada usuário.
@@ -652,10 +410,7 @@ export default function UsersPage({
               </div>
 
               {isOwnerOrAdmin && (
-                <button
-                  onClick={() => setShowAdd(true)}
-                  className="add-main-btn"
-                >
+                <button onClick={() => setShowAdd(true)} className="add-main-btn">
                   + Adicionar usuário
                 </button>
               )}
@@ -666,11 +421,8 @@ export default function UsersPage({
             <div className="panel-head">
               <div>
                 <h2 className="panel-title">Usuários com acesso</h2>
-                <p className="panel-sub">
-                  Lista de membros autorizados a usar este painel.
-                </p>
+                <p className="panel-sub">Lista de membros autorizados a usar este painel.</p>
               </div>
-
               <span className="count-pill">
                 {accesses.length} usuário{accesses.length !== 1 ? "s" : ""}
               </span>
@@ -691,44 +443,34 @@ export default function UsersPage({
                 {accesses.map((access) => (
                   <div key={access.id} className="user-row">
                     <UserAvatar
+                      userId={access.user.id}
                       name={access.user.name}
                       avatar={access.user.avatar}
                     />
 
                     <div className="user-main">
-                      <p className="user-name">
-                        {access.user.name ?? "Usuário"}
-                      </p>
+                      <p className="user-name">{access.user.name ?? "Usuário"}</p>
                       <p className="user-id">ID: {access.user.id}</p>
                     </div>
 
                     {isOwnerOrAdmin && access.role !== "OWNER" ? (
                       <select
                         value={access.role}
-                        onChange={(e) =>
-                          changeRole(access.id, e.target.value as BotRole)
-                        }
+                        onChange={(e) => changeRole(access.id, e.target.value as BotRole)}
                         className="field role-select"
                       >
                         {ROLES.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
+                          <option key={role} value={role}>{role}</option>
                         ))}
                       </select>
                     ) : (
-                      <span
-                        className={`rounded-full border px-3 py-1 text-xs font-bold ${ROLE_COLORS[access.role]}`}
-                      >
+                      <span className={`rounded-full border px-3 py-1 text-xs font-bold ${ROLE_COLORS[access.role]}`}>
                         {access.role}
                       </span>
                     )}
 
                     {isOwnerOrAdmin && access.role !== "OWNER" && (
-                      <button
-                        onClick={() => removeUser(access.id)}
-                        className="remove-btn"
-                      >
+                      <button onClick={() => removeUser(access.id)} className="remove-btn">
                         Remover
                       </button>
                     )}
@@ -766,25 +508,14 @@ export default function UsersPage({
                 className="field mb-5 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
               >
                 {ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
+                  <option key={role} value={role}>{role}</option>
                 ))}
               </select>
 
               <div className="info-box mb-5">
-                <p>
-                  <span className="font-bold text-[#B47CFF]">ADMIN</span> — pode
-                  gerenciar usuários e anúncios.
-                </p>
-                <p>
-                  <span className="font-bold text-blue-400">EDITOR</span> — pode
-                  enviar anúncios.
-                </p>
-                <p>
-                  <span className="font-bold text-white/60">VIEWER</span> — apenas
-                  visualiza o painel.
-                </p>
+                <p><span className="font-bold text-[#B47CFF]">ADMIN</span> — pode gerenciar usuários e anúncios.</p>
+                <p><span className="font-bold text-blue-400">EDITOR</span> — pode enviar anúncios.</p>
+                <p><span className="font-bold text-white/60">VIEWER</span> — apenas visualiza o painel.</p>
               </div>
 
               <div className="flex gap-3">
@@ -794,7 +525,6 @@ export default function UsersPage({
                 >
                   Cancelar
                 </button>
-
                 <button
                   onClick={addUser}
                   disabled={adding}
