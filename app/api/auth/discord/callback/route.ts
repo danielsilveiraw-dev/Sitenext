@@ -34,7 +34,17 @@ export async function GET(req: NextRequest) {
       body: params,
     });
 
-    const tokenData = await tokenRes.json();
+    const tokenText = await tokenRes.text();
+    let tokenData;
+    try {
+      tokenData = JSON.parse(tokenText);
+    } catch {
+      console.error("[discord callback] Resposta não é JSON:", tokenText);
+      return NextResponse.json(
+        { error: "Erro ao obter token do Discord" },
+        { status: 500 }
+      );
+    }
 
     if (!tokenRes.ok || !tokenData.access_token) {
       console.error("[discord callback] Erro token:", tokenData);
@@ -50,7 +60,17 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const user = await userRes.json();
+    const userText = await userRes.text();
+    let user;
+    try {
+      user = JSON.parse(userText);
+    } catch {
+      console.error("[discord callback] Resposta user não é JSON:", userText);
+      return NextResponse.json(
+        { error: "Erro ao obter usuário do Discord" },
+        { status: 500 }
+      );
+    }
 
     if (!userRes.ok || !user.id) {
       console.error("[discord callback] Erro user:", user);
@@ -79,8 +99,8 @@ export async function GET(req: NextRequest) {
 
     response.cookies.set("session", sessionToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
