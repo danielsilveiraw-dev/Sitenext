@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { cookies } from "next/headers";
+import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
+
+async function getUser() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("session")?.value;
+  if (!token) return null;
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ botId: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const session = await getUser();
+  if (!session?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { botId } = await params;
 
@@ -15,7 +27,7 @@ export async function GET(
     where: {
       botId_userId: {
         botId,
-        userId: session.user.id,
+        userId: session.id,
       },
     },
   });
