@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-
-import { prisma } from "@/lib/prisma";
+import { db, botAccesses } from "@/lib/db";
+import { and, eq } from "drizzle-orm";
 
 type SessionUser = {
   id: string;
@@ -34,14 +34,12 @@ export async function GET(
 
     const { botId } = await params;
 
-    const access = await prisma.botAccess.findUnique({
-      where: {
-        botId_userId: {
-          botId,
-          userId: user.id,
-        },
-      },
-      select: {
+    const access = await db.query.botAccesses.findFirst({
+      where: and(
+        eq(botAccesses.botId, botId),
+        eq(botAccesses.userId, user.id)
+      ),
+      columns: {
         role: true,
       },
     });

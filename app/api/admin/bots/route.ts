@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/admin-auth";
-import { prisma } from "@/lib/prisma";
+import { db, bots } from "@/lib/db";
+import { desc } from "drizzle-orm";
 
 export async function GET() {
   const session = await verifyAdminSession();
   if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
-  const bots = await prisma.bot.findMany({
-    include: {
+  const allBots = await db.query.bots.findMany({
+    orderBy: desc(bots.createdAt),
+    with: {
       features: true,
-      accesses: { include: { user: true } },
+      accesses: {
+        with: {
+          user: true,
+        },
+      },
     },
-    orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(bots);
+  return NextResponse.json(allBots);
 }

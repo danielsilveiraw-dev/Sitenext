@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { db, botAccesses, bots, panelLogs } from "@/lib/db";
+import { and, eq } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
 
-import { prisma } from "@/lib/prisma";
-
-type SessionUser = {
-  id: string;
-};
+type SessionUser = { id: string };
 
 async function getUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
-
   if (!token) return null;
-
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as SessionUser;
   } catch {
@@ -24,36 +21,22 @@ async function getUser() {
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser();
-
     if (!user?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     const body = await req.json();
 
-    if (!body.botId) {
-      return NextResponse.json({ error: "botId ausente" }, { status: 400 });
-    }
+    if (!body.botId) return NextResponse.json({ error: "botId ausente" }, { status: 400 });
+    if (!body.guild_id) return NextResponse.json({ error: "guild_id ausente" }, { status: 400 });
+    if (!body.channel_id) return NextResponse.json({ error: "channel_id ausente" }, { status: 400 });
+    if (!body.message_id) return NextResponse.json({ error: "message_id ausente" }, { status: 400 });
 
-    if (!body.guild_id) {
-      return NextResponse.json({ error: "guild_id ausente" }, { status: 400 });
-    }
-
-    if (!body.channel_id) {
-      return NextResponse.json({ error: "channel_id ausente" }, { status: 400 });
-    }
-
-    if (!body.message_id) {
-      return NextResponse.json({ error: "message_id ausente" }, { status: 400 });
-    }
-
-    const access = await prisma.botAccess.findUnique({
-      where: {
-        botId_userId: {
-          botId: body.botId,
-          userId: user.id,
-        },
-      },
+    const access = await db.query.botAccesses.findFirst({
+      where: and(
+        eq(botAccesses.botId, body.botId),
+        eq(botAccesses.userId, user.id)
+      ),
     });
 
     if (!access) {
@@ -67,10 +50,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const bot = await prisma.bot.findUnique({
-      where: {
-        id: body.botId,
-      },
+    const bot = await db.query.bots.findFirst({
+      where: eq(bots.id, body.botId),
     });
 
     if (!bot) {
@@ -78,10 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!bot.apiUrl) {
-      return NextResponse.json(
-        { error: "Bot sem apiUrl configurada" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Bot sem apiUrl configurada" }, { status: 400 });
     }
 
     const botRes = await fetch(`${bot.apiUrl}/edit-announcement`, {
@@ -96,17 +74,16 @@ export async function POST(req: NextRequest) {
     const data = await botRes.json();
 
     if (botRes.ok) {
-      await prisma.panelLog.create({
-        data: {
-          botId: body.botId,
-          userId: user.id,
-          category: "MESSAGE_EDITED",
-          action: "MENSAGEM EDITADA",
-          detail:
-            body.embed?.title ||
-            body.message?.content?.slice(0, 80) ||
-            `Mensagem ID: ${body.message_id}`,
-        },
+      await db.insert(panelLogs).values({
+        id: createId(),
+        botId: body.botId,
+        userId: user.id,
+        category: "MESSAGE_EDITED",
+        action: "MENSAGEM EDITADA",
+        detail:
+          body.embed?.title ||
+          body.message?.content?.slice(0, 80) ||
+          `Mensagem ID: ${body.message_id}`,
       });
     }
 

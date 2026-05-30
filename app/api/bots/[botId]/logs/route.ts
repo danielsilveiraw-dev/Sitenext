@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { db, botAccesses, panelLogs, users } from "@/lib/db";
+import { and, eq, desc, count } from "drizzle-orm";
 
-import { prisma } from "@/lib/prisma";
-
-type SessionUser = {
-  id: string;
-};
+type SessionUser = { id: string };
 
 const VALID_CATEGORIES = [
   "MESSAGE_SENT",
@@ -19,9 +17,7 @@ const VALID_CATEGORIES = [
 async function getUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
-
   if (!token) return null;
-
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as SessionUser;
   } catch {
@@ -35,61 +31,56 @@ export async function GET(
 ) {
   try {
     const user = await getUser();
-
     if (!user?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     const { botId } = await params;
-
     const { searchParams } = new URL(req.url);
 
     const pageParam = Number(searchParams.get("page") || "1");
     const categoryParam = searchParams.get("category");
-
     const page = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
     const limit = 10;
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-    const access = await prisma.botAccess.findUnique({
-      where: {
-        botId_userId: {
-          botId,
-          userId: user.id,
-        },
-      },
+    const access = await db.query.botAccesses.findFirst({
+      where: and(
+        eq(botAccesses.botId, botId),
+        eq(botAccesses.userId, user.id)
+      ),
     });
 
     if (!access) {
       return NextResponse.json({ error: "Sem acesso" }, { status: 403 });
     }
 
-    const where = {
-      botId,
-      ...(categoryParam && VALID_CATEGORIES.includes(categoryParam)
-        ? { category: categoryParam as any }
-        : {}),
-    };
+    const validCategory =
+      categoryParam && VALID_CATEGORIES.includes(categoryParam)
+        ? (categoryParam as typeof panelLogs.category._.data)
+        : null;
 
-    const [logs, total] = await Promise.all([
-      prisma.panelLog.findMany({
+    const where = and(
+      eq(panelLogs.botId, botId),
+      validCategory ? eq(panelLogs.category, validCategory) : undefined
+    );
+
+    const [logs, [{ value: total }]] = await Promise.all([
+      db.query.panelLogs.findMany({
         where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        include: {
+        orderBy: desc(panelLogs.createdAt),
+        limit,
+        offset,
+        with: {
           user: {
-            select: {
+            columns: {
               name: true,
               avatar: true,
             },
           },
         },
       }),
-
-      prisma.panelLog.count({
-        where,
-      }),
+      db.select({ value: count() }).from(panelLogs).where(where),
     ]);
 
     return NextResponse.json({

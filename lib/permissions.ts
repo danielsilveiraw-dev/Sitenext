@@ -1,5 +1,7 @@
-import { prisma } from "@/lib/prisma"
-import { BotRole } from "@prisma/client"
+import { db, botAccesses } from "@/lib/db"
+import { and, eq } from "drizzle-orm"
+
+export type BotRole = "OWNER" | "ADMIN" | "EDITOR" | "VIEWER"
 
 const rolePower: Record<BotRole, number> = {
   OWNER: 4,
@@ -9,13 +11,11 @@ const rolePower: Record<BotRole, number> = {
 }
 
 export async function getBotAccess(userId: string, botId: string) {
-  return prisma.botAccess.findUnique({
-    where: {
-      botId_userId: {
-        botId,
-        userId,
-      },
-    },
+  return db.query.botAccesses.findFirst({
+    where: and(
+      eq(botAccesses.botId, botId),
+      eq(botAccesses.userId, userId)
+    ),
   })
 }
 
@@ -25,9 +25,7 @@ export async function hasBotRole(
   requiredRole: BotRole
 ) {
   const access = await getBotAccess(userId, botId)
-
   if (!access) return false
-
   return rolePower[access.role] >= rolePower[requiredRole]
 }
 

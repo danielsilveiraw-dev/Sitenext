@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/admin-auth";
-import { prisma } from "@/lib/prisma";
+import { db, adminNotices } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 export async function PATCH(
   req: NextRequest,
@@ -12,10 +13,11 @@ export async function PATCH(
   const { noticeId } = await params;
   const body = await req.json();
 
-  const notice = await prisma.adminNotice.update({
-    where: { id: noticeId },
-    data: body,
-  });
+  const [notice] = await db
+    .update(adminNotices)
+    .set({ ...body, updatedAt: new Date() })
+    .where(eq(adminNotices.id, noticeId))
+    .returning();
 
   return NextResponse.json(notice);
 }
@@ -29,7 +31,7 @@ export async function DELETE(
 
   const { noticeId } = await params;
 
-  await prisma.adminNotice.delete({ where: { id: noticeId } });
+  await db.delete(adminNotices).where(eq(adminNotices.id, noticeId));
 
   return NextResponse.json({ ok: true });
 }

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { prisma } from "@/lib/prisma";
+import { db, bots, botAccesses } from "@/lib/db";
+import { and, eq } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
 
 type SessionUser = {
   id: string;
@@ -13,9 +15,7 @@ type SessionUser = {
 async function getUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
-
   if (!token) return null;
-
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as SessionUser;
   } catch {
@@ -26,41 +26,39 @@ async function getUser() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getUser();
-
     if (!session?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     const body = await req.json();
 
-    const bot = await prisma.bot.upsert({
-      where: { id: body.id },
-      update: {
-        name: body.name,
-        avatar: body.avatar ?? null,
-      },
-      create: {
+    const [bot] = await db
+      .insert(bots)
+      .values({
         id: body.id,
         name: body.name,
         avatar: body.avatar ?? null,
         userId: session.id,
-      },
-    });
-
-    await prisma.botAccess.upsert({
-      where: {
-        botId_userId: {
-          botId: bot.id,
-          userId: session.id,
+      })
+      .onConflictDoUpdate({
+        target: bots.id,
+        set: {
+          name: body.name,
+          avatar: body.avatar ?? null,
+          updatedAt: new Date(),
         },
-      },
-      update: {},
-      create: {
+      })
+      .returning();
+
+    await db
+      .insert(botAccesses)
+      .values({
+        id: createId(),
         botId: bot.id,
         userId: session.id,
         role: "OWNER",
-      },
-    });
+      })
+      .onConflictDoNothing();
 
     return NextResponse.json(bot);
   } catch (err) {
@@ -72,23 +70,23 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await getUser();
-
     if (!session?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     const botId = req.nextUrl.searchParams.get("id");
-
     if (!botId) {
       return NextResponse.json({ error: "ID do bot ausente" }, { status: 400 });
     }
 
-    await prisma.botAccess.deleteMany({
-      where: {
-        botId,
-        userId: session.id,
-      },
-    });
+    await db
+      .delete(botAccesses)
+      .where(
+        and(
+          eq(botAccesses.botId, botId),
+          eq(botAccesses.userId, session.id)
+        )
+      );
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db, users, bots, botAccesses } from "@/lib/db";
+import { eq, and } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,58 +29,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await prisma.user.upsert({
-      where: { id: ownerId },
-      update: {},
-      create: {
-        id: ownerId,
-        name: "Owner padrão",
-        avatar: null,
-      },
-    });
+    // Upsert user
+    await db
+      .insert(users)
+      .values({ id: ownerId, name: "Owner padrão", avatar: null })
+      .onConflictDoNothing();
 
-    const bot = await prisma.bot.upsert({
-      where: { id: String(botId) },
-      update: {
-        name: name || "Bot sem nome",
-        avatar: avatar || null,
-        apiUrl: apiUrl || null,
-        lastHeartbeat: new Date(),
-      },
-      create: {
+    // Upsert bot
+    const [bot] = await db
+      .insert(bots)
+      .values({
         id: String(botId),
         name: name || "Bot sem nome",
         avatar: avatar || null,
         apiUrl: apiUrl || null,
         userId: ownerId,
         lastHeartbeat: new Date(),
-      },
-    });
-
-    await prisma.botAccess.upsert({
-      where: {
-        botId_userId: {
-          botId: bot.id,
-          userId: ownerId,
+      })
+      .onConflictDoUpdate({
+        target: bots.id,
+        set: {
+          name: name || "Bot sem nome",
+          avatar: avatar || null,
+          apiUrl: apiUrl || null,
+          lastHeartbeat: new Date(),
+          updatedAt: new Date(),
         },
-      },
-      update: {
-        role: "OWNER",
-      },
-      create: {
+      })
+      .returning();
+
+    // Upsert bot access
+    await db
+      .insert(botAccesses)
+      .values({
+        id: createId(),
         botId: bot.id,
         userId: ownerId,
         role: "OWNER",
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: [botAccesses.botId, botAccesses.userId],
+        set: { role: "OWNER" },
+      });
 
-    return NextResponse.json({
-      ok: true,
-      bot,
-    });
+    return NextResponse.json({ ok: true, bot });
   } catch (err) {
     console.error("[HEARTBEAT ERROR]", err);
-
     return NextResponse.json(
       { error: "Erro interno heartbeat" },
       { status: 500 }

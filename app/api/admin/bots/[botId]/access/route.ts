@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { prisma } from "@/lib/prisma";
+import { db, botAccesses } from "@/lib/db";
+import { and, eq } from "drizzle-orm";
 
 async function getUser() {
   const cookieStore = await cookies();
@@ -23,13 +24,11 @@ export async function GET(
 
   const { botId } = await params;
 
-  const access = await prisma.botAccess.findUnique({
-    where: {
-      botId_userId: {
-        botId,
-        userId: session.id,
-      },
-    },
+  const access = await db.query.botAccesses.findFirst({
+    where: and(
+      eq(botAccesses.botId, botId),
+      eq(botAccesses.userId, session.id)
+    ),
   });
 
   if (!access) return NextResponse.json({ error: "Sem acesso" }, { status: 403 });

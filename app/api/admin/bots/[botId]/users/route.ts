@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/admin-auth";
-import { prisma } from "@/lib/prisma";
+import { db, botAccesses } from "@/lib/db";
+import { and, eq, asc } from "drizzle-orm";
 
 const ROLES = ["OWNER", "ADMIN", "EDITOR", "VIEWER"];
 
@@ -9,26 +10,14 @@ export async function GET(
   { params }: { params: Promise<{ botId: string }> }
 ) {
   const session = await verifyAdminSession();
-
-  if (!session) {
-    return NextResponse.json(
-      { error: "Não autorizado" },
-      { status: 401 }
-    );
-  }
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { botId } = await params;
 
-  const accesses = await prisma.botAccess.findMany({
-    where: {
-      botId,
-    },
-    include: {
-      user: true,
-    },
-    orderBy: {
-      role: "asc",
-    },
+  const accesses = await db.query.botAccesses.findMany({
+    where: eq(botAccesses.botId, botId),
+    orderBy: asc(botAccesses.role),
+    with: { user: true },
   });
 
   return NextResponse.json(accesses);
@@ -39,38 +28,25 @@ export async function PATCH(
   { params }: { params: Promise<{ botId: string }> }
 ) {
   const session = await verifyAdminSession();
-
-  if (!session) {
-    return NextResponse.json(
-      { error: "Não autorizado" },
-      { status: 401 }
-    );
-  }
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { botId } = await params;
-
-  const body = await req.json();
-
-  const { userId, role } = body;
+  const { userId, role } = await req.json();
 
   if (!ROLES.includes(role)) {
-    return NextResponse.json(
-      { error: "Cargo inválido" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Cargo inválido" }, { status: 400 });
   }
 
-  const updated = await prisma.botAccess.update({
-    where: {
-      botId_userId: {
-        botId,
-        userId,
-      },
-    },
-    data: {
-      role,
-    },
-  });
+  const [updated] = await db
+    .update(botAccesses)
+    .set({ role, updatedAt: new Date() })
+    .where(
+      and(
+        eq(botAccesses.botId, botId),
+        eq(botAccesses.userId, userId)
+      )
+    )
+    .returning();
 
   return NextResponse.json(updated);
 }
@@ -80,37 +56,24 @@ export async function DELETE(
   { params }: { params: Promise<{ botId: string }> }
 ) {
   const session = await verifyAdminSession();
-
-  if (!session) {
-    return NextResponse.json(
-      { error: "Não autorizado" },
-      { status: 401 }
-    );
-  }
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
   const { botId } = await params;
-
   const { searchParams } = new URL(req.url);
-
   const userId = searchParams.get("userId");
 
   if (!userId) {
-    return NextResponse.json(
-      { error: "userId ausente" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "userId ausente" }, { status: 400 });
   }
 
-  await prisma.botAccess.delete({
-    where: {
-      botId_userId: {
-        botId,
-        userId,
-      },
-    },
-  });
+  await db
+    .delete(botAccesses)
+    .where(
+      and(
+        eq(botAccesses.botId, botId),
+        eq(botAccesses.userId, userId)
+      )
+    );
 
-  return NextResponse.json({
-    success: true,
-  });
+  return NextResponse.json({ success: true });
 }

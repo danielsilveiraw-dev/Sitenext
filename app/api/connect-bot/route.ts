@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { prisma } from "@/lib/prisma";
+import { db, users, bots, botAccesses } from "@/lib/db";
+import { eq, isNotNull } from "drizzle-orm";
+import { createId } from "@paralleldrive/cuid2";
 
 type SessionUser = {
   id: string;
@@ -30,33 +32,35 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const code = String(body.code || "").trim().toUpperCase();
-    // botApiUrl ainda aceito como fallback manual
     const botApiUrlManual = String(body.botApiUrl || "").replace(/\/$/, "");
 
     if (!code) {
       return NextResponse.json({ error: "Código obrigatório" }, { status: 400 });
     }
 
-    await prisma.user.upsert({
-      where: { id: session.id },
-      update: {
-        name: session.globalName || session.username || "Usuário",
-        avatar: session.avatar || null,
-      },
-      create: {
+    // Upsert user
+    await db
+      .insert(users)
+      .values({
         id: session.id,
         name: session.globalName || session.username || "Usuário",
         avatar: session.avatar || null,
-      },
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          name: session.globalName || session.username || "Usuário",
+          avatar: session.avatar || null,
+          updatedAt: new Date(),
+        },
+      });
+
+    // Busca bots com apiUrl
+    const botsWithUrl = await db.query.bots.findMany({
+      where: isNotNull(bots.apiUrl),
+      columns: { id: true, apiUrl: true },
     });
 
-    // Tenta todos os bots que têm apiUrl salva no banco
-    const botsWithUrl = await prisma.bot.findMany({
-      where: { apiUrl: { not: null } },
-      select: { id: true, apiUrl: true },
-    });
-
-    // Adiciona URL manual se fornecida
     const urlsToTry: string[] = [];
     if (botApiUrlManual) urlsToTry.push(botApiUrlManual);
     for (const b of botsWithUrl) {
@@ -72,9 +76,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Tenta cada URL até encontrar o código
     let successData: any = null;
-    let successUrl: string = "";
+    let successUrl = "";
 
     for (const url of urlsToTry) {
       try {
@@ -96,7 +99,7 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch {
-        // continua tentando próxima URL
+        // continua tentando
       }
     }
 
@@ -107,27 +110,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const bot = await prisma.bot.upsert({
-      where: { id: String(successData.bot.id) },
-      update: {
-        name: successData.bot.name,
-        avatar: successData.bot.avatar ?? null,
-        apiUrl: successUrl,
-      },
-      create: {
+    // Upsert bot
+    const [bot] = await db
+      .insert(bots)
+      .values({
         id: String(successData.bot.id),
         name: successData.bot.name,
         avatar: successData.bot.avatar ?? null,
         apiUrl: successUrl,
         userId: session.id,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: bots.id,
+        set: {
+          name: successData.bot.name,
+          avatar: successData.bot.avatar ?? null,
+          apiUrl: successUrl,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
 
-    await prisma.botAccess.upsert({
-      where: { botId_userId: { botId: bot.id, userId: session.id } },
-      update: {},
-      create: { botId: bot.id, userId: session.id, role: "OWNER" },
-    });
+    // Upsert bot access
+    await db
+      .insert(botAccesses)
+      .values({
+        id: createId(),
+        botId: bot.id,
+        userId: session.id,
+        role: "OWNER",
+      })
+      .onConflictDoNothing();
 
     return NextResponse.json({ success: true, bot });
   } catch (err) {

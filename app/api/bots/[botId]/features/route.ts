@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db, botFeatureFlags } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   req: NextRequest,
@@ -7,11 +8,10 @@ export async function GET(
 ) {
   const { botId } = await params;
 
-  const features = await prisma.botFeatureFlags.findUnique({
-    where: { botId },
+  const features = await db.query.botFeatureFlags.findFirst({
+    where: eq(botFeatureFlags.botId, botId),
   });
 
-  // Se não existir, retorna tudo ativo por padrão
   return NextResponse.json(
     features ?? {
       announcements: true,

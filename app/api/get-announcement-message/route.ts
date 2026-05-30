@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
+import { db, botAccesses, bots } from "@/lib/db";
+import { and, eq } from "drizzle-orm";
 
-import { prisma } from "@/lib/prisma";
-
-type SessionUser = {
-  id: string;
-};
+type SessionUser = { id: string };
 
 async function getUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get("session")?.value;
-
   if (!token) return null;
-
   try {
     return jwt.verify(token, process.env.JWT_SECRET!) as SessionUser;
   } catch {
@@ -24,7 +20,6 @@ async function getUser() {
 export async function POST(req: NextRequest) {
   try {
     const user = await getUser();
-
     if (!user?.id) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
@@ -38,21 +33,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const access = await prisma.botAccess.findUnique({
-      where: {
-        botId_userId: {
-          botId: body.botId,
-          userId: user.id,
-        },
-      },
+    const access = await db.query.botAccesses.findFirst({
+      where: and(
+        eq(botAccesses.botId, body.botId),
+        eq(botAccesses.userId, user.id)
+      ),
     });
 
     if (!access || !["OWNER", "ADMIN", "EDITOR"].includes(access.role)) {
       return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
     }
 
-    const bot = await prisma.bot.findUnique({
-      where: { id: body.botId },
+    const bot = await db.query.bots.findFirst({
+      where: eq(bots.id, body.botId),
     });
 
     if (!bot?.apiUrl) {

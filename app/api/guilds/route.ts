@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
-import { prisma } from "@/lib/prisma";
+import { db, bots } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 type SessionUser = {
   id: string;
@@ -22,7 +23,6 @@ type DiscordGuild = {
 function isAdmin(guild: DiscordGuild) {
   const permissions = BigInt(guild.permissions);
   const ADMINISTRATOR = BigInt(0x8);
-
   return guild.owner || (permissions & ADMINISTRATOR) === ADMINISTRATOR;
 }
 
@@ -41,34 +41,23 @@ export async function GET(req: NextRequest) {
     const botId = searchParams.get("botId");
 
     if (!botId) {
-      return NextResponse.json(
-        { error: "botId obrigatório" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "botId obrigatório" }, { status: 400 });
     }
 
-    const bot = await prisma.bot.findUnique({
-      where: { id: botId },
+    const bot = await db.query.bots.findFirst({
+      where: eq(bots.id, botId),
     });
 
     if (!bot) {
-      return NextResponse.json(
-        { error: "Bot não encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Bot não encontrado" }, { status: 404 });
     }
 
     if (!bot.apiUrl) {
-      return NextResponse.json(
-        { error: "Bot sem API configurada" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Bot sem API configurada" }, { status: 400 });
     }
 
     const userGuildsRes = await fetch("https://discord.com/api/users/@me/guilds", {
-      headers: {
-        Authorization: `Bearer ${user.accessToken}`,
-      },
+      headers: { Authorization: `Bearer ${user.accessToken}` },
     });
 
     const userGuilds = await userGuildsRes.json();
@@ -83,9 +72,7 @@ export async function GET(req: NextRequest) {
     const adminGuilds = userGuilds.filter(isAdmin);
 
     const botGuildsRes = await fetch(`${bot.apiUrl}/bot-guilds`, {
-      headers: {
-        Authorization: `Bearer ${process.env.BOT_API_SECRET}`,
-      },
+      headers: { Authorization: `Bearer ${process.env.BOT_API_SECRET}` },
     });
 
     const botGuilds = await botGuildsRes.json();
@@ -98,7 +85,6 @@ export async function GET(req: NextRequest) {
     }
 
     const botGuildIds = new Set(botGuilds.map((guild: any) => String(guild.id)));
-
     const filteredGuilds = adminGuilds.filter((guild: DiscordGuild) =>
       botGuildIds.has(String(guild.id))
     );
@@ -106,7 +92,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(filteredGuilds);
   } catch (err) {
     console.error("[GUILDS ERROR]", err);
-
     return NextResponse.json(
       { error: "Erro interno ao buscar servidores" },
       { status: 500 }
