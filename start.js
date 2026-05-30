@@ -2,13 +2,10 @@ const { execSync } = require("child_process");
 const { createServer } = require("http");
 const { parse } = require("url");
 const next = require("next");
-const fs = require("fs");
 
-if (!fs.existsSync(".next/BUILD_ID")) {
-  console.log("> Running next build...");
-  execSync("npx next build", { stdio: "inherit" });
-  console.log("> Build complete, starting server...");
-}
+console.log("> Running next build...");
+execSync("npx next build", { stdio: "inherit" });
+console.log("> Build complete, starting server...");
 
 const port = process.env.PORT || 8080;
 
