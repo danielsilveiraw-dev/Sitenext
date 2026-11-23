@@ -68,3 +68,13 @@ export const botSettings = pgTable("BotSettings", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
+
+export const transcripts = pgTable("Transcript", {
+  id: text("id").primaryKey(),
+  botId: text("botId")
+    .notNull()
+    .references(() => bots.id, { onDelete: "cascade" }),
+  name: text("name"),
+  html: text("html").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
