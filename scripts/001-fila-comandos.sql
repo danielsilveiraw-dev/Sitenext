@@ -1,0 +1,3 @@
+-- Já aplicado no Supabase (as tabelas BotCommand, BotStatus e BotSettings já existiam).
+-- A estrutura real está descrita em lib/db/queue-schema.ts.
+-- Este arquivo fica só como registro; não precisa rodar de novo.

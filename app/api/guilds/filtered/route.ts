@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { db, bots } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { callBot } from "@/lib/bot-commands";
 
 type SessionUser = {
   id: string;
@@ -46,13 +47,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Bot não encontrado" }, { status: 404 });
     }
 
-    if (!bot.apiUrl) {
-      return NextResponse.json(
-        { error: "Bot sem apiUrl configurada" },
-        { status: 400 }
-      );
-    }
-
     const userRes = await fetch("https://discord.com/api/users/@me/guilds", {
       headers: { Authorization: `Bearer ${user.accessToken}` },
       cache: "no-store",
@@ -63,23 +57,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json([], { status: 200 });
     }
 
-    const userGuilds = await userRes.json();
+    const userGuilds = await userRes.json().catch(() => null);
     if (!Array.isArray(userGuilds)) {
       return NextResponse.json([], { status: 200 });
     }
 
-    const botRes = await fetch(`${bot.apiUrl}/bot-guilds`, {
-      headers: { Authorization: `Bearer ${process.env.BOT_API_SECRET}` },
-      cache: "no-store",
-    });
+    const r = await callBot(bot, { action: "list_guilds", legacyPath: "/bot-guilds" });
+    const botGuilds = Array.isArray(r.data)
+      ? r.data
+      : Array.isArray(r.data?.guilds)
+        ? r.data.guilds
+        : null;
 
-    if (!botRes.ok) {
-      console.error("[filtered] Erro bot-guilds:", botRes.status);
-      return NextResponse.json([], { status: 200 });
-    }
-
-    const botGuilds = await botRes.json();
-    if (!Array.isArray(botGuilds)) {
+    if (!r.ok || !botGuilds) {
+      console.error("[filtered] Erro ao buscar servidores do bot:", r.status, r.data);
       return NextResponse.json([], { status: 200 });
     }
 

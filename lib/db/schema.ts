@@ -48,6 +48,7 @@ export const bots = pgTable(
     name: text("name").notNull(),
     avatar: text("avatar"),
     apiUrl: text("apiUrl"),
+    apiTokenHash: text("apiTokenHash").unique(),
     requiredRoleId: text("requiredRoleId"),
     userId: text("userId")
       .notNull()

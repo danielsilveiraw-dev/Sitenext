@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { db, bots } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { callBot } from "@/lib/bot-commands";
 
 export async function GET(req: NextRequest, context: any) {
   try {
@@ -33,21 +34,13 @@ export async function GET(req: NextRequest, context: any) {
       return NextResponse.json({ error: "Bot não encontrado" }, { status: 404 });
     }
 
-    if (!bot.apiUrl) {
-      return NextResponse.json(
-        { error: "Bot sem apiUrl configurada" },
-        { status: 400 }
-      );
-    }
-
-    const botRes = await fetch(`${bot.apiUrl}/guilds/${guildId}/channels`, {
-      headers: { Authorization: `Bearer ${process.env.BOT_API_SECRET}` },
-      cache: "no-store",
+    const r = await callBot(bot, {
+      action: "list_channels",
+      payload: { guildId },
+      legacyPath: `/guilds/${guildId}/channels`,
     });
 
-    const data = await botRes.json();
-
-    return NextResponse.json(data, { status: botRes.status });
+    return NextResponse.json(r.data, { status: r.status });
   } catch (err) {
     console.error("[guild channels]", err);
     return NextResponse.json({ error: "Erro ao buscar canais" }, { status: 500 });
