@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { db, botAccesses, bots } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
+import { callBot } from "@/lib/bot-commands";
+import { botResponse } from "@/lib/bot-response";
 
 type SessionUser = { id: string };
 
@@ -48,29 +50,25 @@ export async function POST(req: NextRequest) {
       where: eq(bots.id, body.botId),
     });
 
-    if (!bot?.apiUrl) {
-      return NextResponse.json(
-        { error: "Bot sem apiUrl configurada" },
-        { status: 400 }
-      );
+    if (!bot) {
+      return NextResponse.json({ error: "Bot não encontrado" }, { status: 404 });
     }
 
-    const botRes = await fetch(`${bot.apiUrl}/get-message`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.BOT_API_SECRET}`,
-      },
-      body: JSON.stringify({
-        guild_id: body.guild_id,
-        channel_id: body.channel_id,
-        message_id: body.message_id,
-      }),
+    const msgPayload = {
+      guild_id: body.guild_id,
+      channel_id: body.channel_id,
+      message_id: body.message_id,
+    };
+
+    const r = await callBot(bot, {
+      action: "get_message",
+      payload: msgPayload,
+      legacyPath: "/get-message",
+      legacyMethod: "POST",
+      legacyBody: msgPayload,
     });
 
-    const data = await botRes.json();
-
-    return NextResponse.json(data, { status: botRes.status });
+    return botResponse(r);
   } catch (err) {
     console.error("[get-announcement-message]", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });

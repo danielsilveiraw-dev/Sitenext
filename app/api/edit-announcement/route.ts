@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import { db, botAccesses, bots, panelLogs } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
+import { callBot } from "@/lib/bot-commands";
+import { botResponse } from "@/lib/bot-response";
 
 type SessionUser = { id: string };
 
@@ -58,22 +60,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Bot não encontrado" }, { status: 404 });
     }
 
-    if (!bot.apiUrl) {
-      return NextResponse.json({ error: "Bot sem apiUrl configurada" }, { status: 400 });
-    }
-
-    const botRes = await fetch(`${bot.apiUrl}/edit-announcement`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.BOT_API_SECRET}`,
-      },
-      body: JSON.stringify(body),
+    const r = await callBot(bot, {
+      action: "edit_announcement",
+      payload: body,
+      legacyPath: "/edit-announcement",
+      legacyMethod: "POST",
+      legacyBody: body,
     });
 
-    const data = await botRes.json();
-
-    if (botRes.ok) {
+    if (r.ok) {
       await db.insert(panelLogs).values({
         id: createId(),
         botId: body.botId,
@@ -87,7 +82,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(data, { status: botRes.status });
+    return botResponse(r);
   } catch (err) {
     console.error("[edit-announcement]", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
