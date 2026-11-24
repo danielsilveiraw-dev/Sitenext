@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { createHash } from "crypto";
 import { db, users, bots, botAccesses, botConnectCodes } from "@/lib/db";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
 type SessionUser = {
@@ -67,6 +67,55 @@ export async function POST(req: NextRequest) {
     const codeHash = createHash("sha256")
       .update(code)
       .digest("hex");
+
+    // [DEBUG-TEMP] remover depois
+    try {
+      const debugCode = (
+        await db
+          .select({
+            id: botConnectCodes.id,
+            usedAt: botConnectCodes.usedAt,
+            expiresAt: botConnectCodes.expiresAt,
+          })
+          .from(botConnectCodes)
+          .where(eq(botConnectCodes.codeHash, codeHash))
+          .limit(1)
+      )[0];
+
+      console.log("[CONNECT-BOT DEBUG] Consulta do codigo:", {
+        hash: codeHash.slice(0, 12),
+        found: !!debugCode,
+        used: debugCode ? !!debugCode.usedAt : null,
+        expiresAt: debugCode?.expiresAt?.toISOString() ?? null,
+        expired: debugCode ? debugCode.expiresAt <= new Date() : null,
+        host: req.headers.get("host"),
+        dbFp: createHash("sha256").update(process.env.DATABASE_URL || "").digest("hex").slice(0, 8),
+        agora: new Date().toISOString(),
+      });
+
+      if (!debugCode) {
+        const recent = await db
+          .select({
+            codeHash: botConnectCodes.codeHash,
+            expiresAt: botConnectCodes.expiresAt,
+            usedAt: botConnectCodes.usedAt,
+          })
+          .from(botConnectCodes)
+          .orderBy(desc(botConnectCodes.createdAt))
+          .limit(3);
+
+        console.log(
+          "[CONNECT-BOT DEBUG] Ultimos codigos no banco:",
+          recent.map((r) => ({
+            hash: r.codeHash.slice(0, 12),
+            expiresAt: r.expiresAt?.toISOString() ?? null,
+            used: !!r.usedAt,
+          }))
+        );
+      }
+    } catch (e) {
+      console.error("[CONNECT-BOT DEBUG ERROR]", e);
+    }
 
     const result = await db.transaction(async (tx) => {
       const now = new Date();
