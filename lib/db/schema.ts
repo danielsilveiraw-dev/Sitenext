@@ -143,6 +143,27 @@ export const panelLogs = pgTable(
   ]
 );
 
+export const botConnectCodes = pgTable(
+  "BotConnectCode",
+  {
+    id: text("id").primaryKey(),
+    codeHash: text("codeHash").notNull().unique(),
+    botId: text("botId").notNull(),
+    botName: text("botName").notNull(),
+    botAvatar: text("botAvatar"),
+    expiresAt: timestamp("expiresAt").notNull(),
+    usedAt: timestamp("usedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("BotConnectCode_botId_idx").on(t.botId),
+    index("BotConnectCode_expiresAt_idx").on(t.expiresAt),
+  ]
+);
+
+export type BotConnectCode = typeof botConnectCodes.$inferSelect;
+
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   bots: many(bots),
