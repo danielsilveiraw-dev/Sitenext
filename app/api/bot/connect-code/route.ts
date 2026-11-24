@@ -96,15 +96,6 @@ export async function POST(req: NextRequest) {
       expiresAt,
     });
 
-    // [DEBUG-TEMP] remover depois
-    console.log("[CONNECT-CODE DEBUG] Codigo registrado:", {
-      hash: codeHash.slice(0, 12),
-      botId,
-      expiresAt: expiresAt.toISOString(),
-      host: req.headers.get("host"),
-      dbFp: createHash("sha256").update(process.env.DATABASE_URL || "").digest("hex").slice(0, 8),
-    });
-
     return NextResponse.json(
       {
         success: true,

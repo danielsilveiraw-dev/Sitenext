@@ -1,21 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { db, users, bots, botAccesses } from "@/lib/db";
-import { eq, and } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
 export async function POST(req: NextRequest) {
   try {
-    const auth = req.headers.get("authorization");
+    const apiSecret = process.env.BOT_API_SECRET;
 
-    if (auth !== `Bearer ${process.env.BOT_API_SECRET}`) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    if (!apiSecret) {
+      console.error("[HEARTBEAT] BOT_API_SECRET nao configurado.");
+      return NextResponse.json(
+        { error: "Configura\u00e7\u00e3o interna inv\u00e1lida" },
+        { status: 500 }
+      );
+    }
+
+    const authorization = req.headers.get("authorization");
+    const receivedSecret = authorization?.startsWith("Bearer ")
+      ? authorization.slice(7)
+      : "";
+
+    const expectedBuffer = Buffer.from(apiSecret);
+    const receivedBuffer = Buffer.from(receivedSecret);
+
+    const authorized =
+      expectedBuffer.length === receivedBuffer.length &&
+      timingSafeEqual(expectedBuffer, receivedBuffer);
+
+    if (!authorized) {
+      return NextResponse.json({ error: "N\u00e3o autorizado" }, { status: 401 });
     }
 
     const { botId, name, avatar, apiUrl } = await req.json();
 
     if (!botId) {
       return NextResponse.json(
-        { error: "botId obrigatório" },
+        { error: "botId obrigat\u00f3rio" },
         { status: 400 }
       );
     }
@@ -24,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     if (!ownerId) {
       return NextResponse.json(
-        { error: "DEFAULT_OWNER_ID não configurado" },
+        { error: "DEFAULT_OWNER_ID n\u00e3o configurado" },
         { status: 500 }
       );
     }
@@ -32,7 +52,7 @@ export async function POST(req: NextRequest) {
     // Upsert user
     await db
       .insert(users)
-      .values({ id: ownerId, name: "Owner padrão", avatar: null })
+      .values({ id: ownerId, name: "Owner padr\u00e3o", avatar: null })
       .onConflictDoNothing();
 
     // Upsert bot
