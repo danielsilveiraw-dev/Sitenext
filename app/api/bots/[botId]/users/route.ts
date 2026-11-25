@@ -51,7 +51,13 @@ export async function GET(
       },
     });
 
-    return NextResponse.json(accesses);
+    const staffId = process.env.DEFAULT_OWNER_ID;
+    const visible =
+      staffId && user.id !== staffId
+        ? accesses.filter((a) => a.userId !== staffId)
+        : accesses;
+
+    return NextResponse.json(visible);
   } catch (err) {
     console.error("[bot users GET]", err);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });

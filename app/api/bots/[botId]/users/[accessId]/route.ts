@@ -50,7 +50,7 @@ export async function PATCH(
       with: { user: { columns: { id: true, name: true, avatar: true } } },
     });
 
-    if (!targetAccess || targetAccess.botId !== botId) {
+    if (!targetAccess || targetAccess.botId !== botId || (process.env.DEFAULT_OWNER_ID && targetAccess.userId === process.env.DEFAULT_OWNER_ID && user.id !== process.env.DEFAULT_OWNER_ID)) {
       return NextResponse.json({ error: "Usuário não encontrado neste bot" }, { status: 404 });
     }
 
@@ -107,7 +107,7 @@ export async function DELETE(
       with: { user: { columns: { id: true, name: true, avatar: true } } },
     });
 
-    if (!targetAccess || targetAccess.botId !== botId) {
+    if (!targetAccess || targetAccess.botId !== botId || (process.env.DEFAULT_OWNER_ID && targetAccess.userId === process.env.DEFAULT_OWNER_ID && user.id !== process.env.DEFAULT_OWNER_ID)) {
       return NextResponse.json({ error: "Usuário não encontrado neste bot" }, { status: 404 });
     }
 
