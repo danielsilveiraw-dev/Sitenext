@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
             name: codeRow.botName,
             avatar: codeRow.botAvatar ?? null,
             updatedAt: now,
+            apiTokenHash: null,
           })
           .where(eq(bots.id, codeRow.botId))
           .returning();
