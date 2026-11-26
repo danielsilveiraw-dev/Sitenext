@@ -1,0 +1,130 @@
+
+.signin-page {
+  --bg: #0c0816;
+  --panel: #141024;
+  --panel-2: #1a1530;
+  --line: #2a2145;
+  --text: #ece8f6;
+  --muted: #8c83a6;
+  --faint: #5f577a;
+  --gold: #f2a672;
+  --violet: #a98af0;
+  --body: var(--font-outfit), system-ui, sans-serif;
+  --mono: var(--font-geist-mono), monospace;
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  box-sizing: border-box;
+}
+
+.signin-page *,
+.signin-page *::before,
+.signin-page *::after {
+  box-sizing: border-box;
+}
+
+.signin-page a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.signin-page a:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+
+.signin-page .signin {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.signin-page .signin-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 44px 40px 32px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  text-align: center;
+}
+
+.signin-page .signin-logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 24px;
+  display: block;
+  object-fit: contain;
+}
+
+.signin-page .signin-title {
+  margin-bottom: 10px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.signin-page .signin-sub {
+  margin-bottom: 30px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.signin-page .btn-discord {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  border-radius: 10px;
+  background: #5865f2;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  transition: filter 0.15s, transform 0.15s;
+}
+
+.signin-page .btn-discord:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.signin-page .discord-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.signin-page .signin-foot {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+@media (max-width: 480px) {
+  .signin-page .signin-card {
+    padding: 36px 24px 26px;
+  }
+
+  .signin-page .signin-title {
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signin-page *,
+  .signin-page *::before,
+  .signin-page *::after {
+    transition: none !important;
+  }
+}

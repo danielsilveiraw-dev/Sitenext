@@ -6,6 +6,8 @@ import {
   jsonb,
   integer,
   boolean,
+  index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { bots } from "./schema";
 
@@ -45,29 +47,38 @@ export const botCommands = pgTable("BotCommand", {
   finishedAt: timestamp("finishedAt"),
 });
 
-export const botStatuses = pgTable("BotStatus", {
-  id: text("id").primaryKey(),
-  botId: text("botId")
-    .notNull()
-    .references(() => bots.id, { onDelete: "cascade" }),
-  type: activityTypeEnum("type").default("PLAYING").notNull(),
-  text: text("text").notNull(),
-  enabled: boolean("enabled").default(true).notNull(),
-  position: integer("position").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+export const botStatuses = pgTable(
+  "BotStatus",
+  {
+    id: text("id").primaryKey(),
+    botId: text("botId")
+      .notNull()
+      .references(() => bots.id, { onDelete: "cascade" }),
+    type: activityTypeEnum("type").default("PLAYING").notNull(),
+    text: text("text").notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    position: integer("position").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (t) => [index("BotStatus_botId_idx").on(t.botId)]
+);
 
-export const botSettings = pgTable("BotSettings", {
-  id: text("id").primaryKey(),
-  botId: text("botId")
-    .notNull()
-    .references(() => bots.id, { onDelete: "cascade" }),
-  presence: presenceStatusEnum("presence").default("ONLINE").notNull(),
-  rotateSeconds: integer("rotateSeconds").default(30).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+export const botSettings = pgTable(
+  "BotSettings",
+  {
+    id: text("id").primaryKey(),
+    botId: text("botId")
+      .notNull()
+      .references(() => bots.id, { onDelete: "cascade" }),
+    presence: presenceStatusEnum("presence").default("ONLINE").notNull(),
+    rotateSeconds: integer("rotateSeconds").default(30).notNull(),
+    bannerUrl: text("bannerUrl"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("BotSettings_botId_key").on(t.botId)]
+);
 
 export const transcripts = pgTable("Transcript", {
   id: text("id").primaryKey(),

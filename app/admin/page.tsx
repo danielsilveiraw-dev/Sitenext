@@ -1,7 +1,9 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ToastProvider";
 
 type Bot = {
   id: string;
@@ -25,11 +27,13 @@ type Notice = {
   createdAt: string;
 };
 
+type Tab = "bots" | "create" | "notices";
+
 const NOTICE_COLORS = {
-  INFO: "#b47cff",
-  WARNING: "#fbbf24",
-  MAINTENANCE: "#f87171",
-  UPDATE: "#57f287",
+  INFO: "#ad8aff",
+  WARNING: "#f4bd65",
+  MAINTENANCE: "#f18b79",
+  UPDATE: "#e5a15f",
 };
 
 const NOTICE_ICONS = {
@@ -39,15 +43,16 @@ const NOTICE_ICONS = {
   UPDATE: "🚀",
 };
 
-const FEATURE_LABELS: Record<string, string> = {
+const FEATURE_LABELS = {
   announcements: "📢 Embeds",
   users: "👥 Usuários",
   logs: "📋 Logs",
-  settings: "⚙️ Config",
+  settings: "⚙️ Configurações",
 };
 
 export default function AdminPage() {
   const router = useRouter();
+  const toast = useToast();
 
   const [bots, setBots] = useState<Bot[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -55,100 +60,133 @@ export default function AdminPage() {
 
   const [newTitle, setNewTitle] = useState("");
   const [newMessage, setNewMessage] = useState("");
-  const [newType, setNewType] = useState("INFO");
+  const [newType, setNewType] = useState<Notice["type"]>("INFO");
 
-  const [selectedTab, setSelectedTab] = useState<"bots" | "create" | "notices">("bots");
-
+  const [selectedTab, setSelectedTab] = useState<Tab>("bots");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  function showToast(text: string, type: "success" | "error") {
-    setToast({ text, type });
-    setTimeout(() => setToast(null), 3000);
-  }
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
+
     try {
       const [botsRes, noticesRes] = await Promise.all([
         fetch("/api/admin/bots"),
         fetch("/api/admin/notices"),
       ]);
 
-      if (botsRes.status === 401) {
+      if (botsRes.status === 401 || noticesRes.status === 401) {
         router.push("/admin/login");
-        return;
+        return false;
       }
 
-      const botsData = await botsRes.json();
-      const noticesData = await noticesRes.json();
+      if (!botsRes.ok || !noticesRes.ok) {
+        throw new Error("Não foi possível carregar os dados administrativos.");
+      }
+
+      const [botsData, noticesData] = await Promise.all([
+        botsRes.json(),
+        noticesRes.json(),
+      ]);
 
       setBots(Array.isArray(botsData) ? botsData : []);
       setNotices(Array.isArray(noticesData) ? noticesData : []);
+
+      return true;
     } catch (err) {
       console.error(err);
-      showToast("Erro ao carregar dados", "error");
+      toast.error("Erro ao carregar os dados administrativos.");
+      return false;
     } finally {
       setLoading(false);
     }
-  }
+  }, [router, toast]);
 
-  async function toggleFeature(botId: string, feature: string, value: boolean) {
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  async function toggleFeature(
+    botId: string,
+    feature: keyof typeof FEATURE_LABELS,
+    value: boolean
+  ) {
     const key = `${botId}-${feature}`;
+
     try {
       setLoadingAction(key);
-      await fetch(`/api/admin/bots/${botId}/features`, {
+
+      const res = await fetch(`/api/admin/bots/${botId}/features`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [feature]: value }),
       });
 
+      if (!res.ok) {
+        throw new Error("Não foi possível atualizar a funcionalidade.");
+      }
+
       setBots((prev) =>
-        prev.map((b) =>
-          b.id === botId
+        prev.map((bot) =>
+          bot.id === botId
             ? {
-                ...b,
+                ...bot,
                 features: {
-                  announcements: b.features?.announcements ?? true,
-                  users: b.features?.users ?? true,
-                  logs: b.features?.logs ?? true,
-                  settings: b.features?.settings ?? true,
+                  announcements: bot.features?.announcements ?? true,
+                  users: bot.features?.users ?? true,
+                  logs: bot.features?.logs ?? true,
+                  settings: bot.features?.settings ?? true,
                   [feature]: value,
                 },
               }
-            : b
+            : bot
         )
       );
 
-      showToast("Funcionalidade atualizada", "success");
-    } catch {
-      showToast("Erro ao atualizar", "error");
+      toast.success("Funcionalidade atualizada!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao atualizar a funcionalidade.");
     } finally {
       setLoadingAction(null);
     }
   }
 
   async function createNotice() {
-    if (!newTitle || !newMessage) return;
+    if (!newTitle.trim() || !newMessage.trim()) {
+      toast.error("Preencha o título e a mensagem do aviso.");
+      return;
+    }
+
     try {
       setLoadingAction("create-notice");
-      await fetch("/api/admin/notices", {
+
+      const res = await fetch("/api/admin/notices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle, message: newMessage, type: newType }),
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          message: newMessage.trim(),
+          type: newType,
+        }),
       });
+
+      if (!res.ok) {
+        throw new Error("Não foi possível publicar o aviso.");
+      }
 
       setNewTitle("");
       setNewMessage("");
       setNewType("INFO");
-      await loadData();
-      showToast("Aviso publicado!", "success");
-    } catch {
-      showToast("Erro ao publicar aviso", "error");
+
+      const refreshed = await loadData();
+
+      if (refreshed) {
+        setSelectedTab("notices");
+        toast.success("Aviso publicado com sucesso!");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao publicar o aviso.");
     } finally {
       setLoadingAction(null);
     }
@@ -157,16 +195,27 @@ export default function AdminPage() {
   async function toggleNotice(id: string, active: boolean) {
     try {
       setLoadingAction(`notice-${id}`);
-      await fetch(`/api/admin/notices/${id}`, {
+
+      const res = await fetch(`/api/admin/notices/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active }),
       });
 
-      setNotices((prev) => prev.map((n) => (n.id === id ? { ...n, active } : n)));
-      showToast(active ? "Aviso ativado" : "Aviso desativado", "success");
-    } catch {
-      showToast("Erro ao atualizar aviso", "error");
+      if (!res.ok) {
+        throw new Error("Não foi possível atualizar o aviso.");
+      }
+
+      setNotices((prev) =>
+        prev.map((notice) =>
+          notice.id === id ? { ...notice, active } : notice
+        )
+      );
+
+      toast.success(active ? "Aviso ativado!" : "Aviso desativado!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao atualizar o aviso.");
     } finally {
       setLoadingAction(null);
     }
@@ -175,483 +224,1065 @@ export default function AdminPage() {
   async function deleteNotice(id: string) {
     try {
       setLoadingAction(`delete-${id}`);
-      await fetch(`/api/admin/notices/${id}`, { method: "DELETE" });
-      setNotices((prev) => prev.filter((n) => n.id !== id));
-      showToast("Aviso excluído", "success");
-    } catch {
-      showToast("Erro ao excluir aviso", "error");
+
+      const res = await fetch(`/api/admin/notices/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Não foi possível excluir o aviso.");
+      }
+
+      setNotices((prev) => prev.filter((notice) => notice.id !== id));
+      toast.success("Aviso excluído!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao excluir o aviso.");
     } finally {
       setLoadingAction(null);
     }
   }
 
   async function logout() {
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin/login");
+    try {
+      const res = await fetch("/api/admin/logout", { method: "POST" });
+
+      if (!res.ok) {
+        throw new Error("Falha ao encerrar a sessão.");
+      }
+
+      router.push("/admin/login");
+    } catch (err) {
+      console.error(err);
+      toast.error("Não foi possível sair do painel.");
+    }
   }
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: "#050505", display: "flex", justifyContent: "center", alignItems: "center", fontFamily: "Inter, sans-serif" }}>
-        <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Carregando painel...</div>
+      <div className="a-loading">
+        <div className="a-loading-content">
+          <div className="a-loader" />
+          <span>Carregando painel administrativo...</span>
+        </div>
+
+        <style jsx global>{`
+          .a-loading {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0c0816;
+            color: rgba(255,255,255,.55);
+            font-family: Inter, sans-serif;
+          }
+          .a-loading-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            font-size: 13px;
+          }
+          .a-loader {
+            width: 34px;
+            height: 34px;
+            border: 3px solid rgba(169,138,240,.15);
+            border-top-color: #b49aef;
+            border-radius: 50%;
+            animation: a-spin .8s linear infinite;
+          }
+          @keyframes a-spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
+
+  const onlineBots = bots.filter((bot) => {
+    if (!bot.lastHeartbeat) return false;
+    const heartbeat = new Date(bot.lastHeartbeat).getTime();
+    return Number.isFinite(heartbeat) && Date.now() - heartbeat < 30000;
+  }).length;
 
   return (
     <>
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        .a-page, .a-page * { box-sizing: border-box; }
 
-        body {
-          background: #050505;
-          color: #f5f5f5;
-          font-family: 'Inter', sans-serif;
-          overflow-x: hidden;
+        .a-page {
+          position: relative;
+          isolation: isolate;
           min-height: 100vh;
+          padding: 38px 32px 90px;
+          overflow: hidden;
+          background: #0c0816;
+          color: #f5f1ff;
+          font-family: Inter, sans-serif;
         }
 
-        .a-bgfx {
-          position: fixed; inset: 0; pointer-events: none; z-index: 0;
-          background:
-            radial-gradient(circle at 8% 10%, rgba(121,34,242,0.18), transparent 28%),
-            radial-gradient(circle at 92% 85%, rgba(149,254,89,0.07), transparent 30%);
+        .a-page::before,
+        .a-page::after {
+          content: "";
+          position: fixed;
+          pointer-events: none;
+          z-index: -1;
+          border-radius: 50%;
+          filter: blur(90px);
         }
 
-        .a-page { position: relative; z-index: 10; padding: 34px 32px 90px; min-height: 100vh; }
-        .a-container { max-width: 1180px; margin: 0 auto; }
+        .a-page::before {
+          width: 420px;
+          height: 420px;
+          top: -180px;
+          left: -130px;
+          background: rgba(119, 75, 190, .13);
+        }
+
+        .a-page::after {
+          width: 380px;
+          height: 380px;
+          right: -180px;
+          bottom: -160px;
+          background: rgba(219, 132, 72, .07);
+        }
+
+        .a-container {
+          width: 100%;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
 
         .a-header {
-          display: flex; justify-content: space-between; align-items: center;
-          margin-bottom: 38px; flex-wrap: wrap; gap: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          margin-bottom: 34px;
         }
 
         .a-tag {
-          color: #95fe59; font-family: 'JetBrains Mono', monospace;
-          font-size: 11px; letter-spacing: 0.18em; margin-bottom: 6px;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          margin-bottom: 9px;
+          color: #d69b68;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: .17em;
+          text-transform: uppercase;
         }
 
-        .a-title { font-size: 36px; font-weight: 900; letter-spacing: -0.05em; }
+        .a-tag::before {
+          content: "";
+          width: 20px;
+          height: 1px;
+          background: #d69b68;
+        }
+
+        .a-title {
+          font-size: clamp(27px, 4vw, 38px);
+          line-height: 1.1;
+          font-weight: 900;
+          letter-spacing: -.055em;
+        }
+
+        .a-subtitle {
+          margin-top: 9px;
+          color: rgba(235,226,255,.42);
+          font-size: 13px;
+        }
 
         .a-logout {
-          padding: 10px 18px; border-radius: 14px;
-          border: 1px solid rgba(248,113,113,0.2);
-          background: rgba(248,113,113,0.08); color: #f87171;
-          font-weight: 700; cursor: pointer; font-size: 13px;
-          transition: 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 11px 17px;
+          border: 1px solid rgba(241,139,121,.2);
+          border-radius: 12px;
+          background: rgba(241,139,121,.07);
+          color: #f18b79;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: .2s;
         }
-        .a-logout:hover { background: rgba(248,113,113,0.16); }
+
+        .a-logout:hover {
+          background: rgba(241,139,121,.14);
+          border-color: rgba(241,139,121,.4);
+          transform: translateY(-1px);
+        }
+
+        .a-overview {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 13px;
+          margin-bottom: 25px;
+        }
+
+        .a-overview-item {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+          padding: 17px 19px;
+          border: 1px solid rgba(255,255,255,.065);
+          border-radius: 17px;
+          background: rgba(24,18,39,.75);
+        }
+
+        .a-overview-icon {
+          display: grid;
+          place-items: center;
+          width: 40px;
+          height: 40px;
+          flex-shrink: 0;
+          border-radius: 12px;
+          background: rgba(169,138,240,.11);
+          font-size: 18px;
+        }
+
+        .a-overview-value {
+          font-size: 21px;
+          font-weight: 900;
+          letter-spacing: -.04em;
+        }
+
+        .a-overview-label {
+          margin-top: 3px;
+          color: rgba(235,226,255,.4);
+          font-size: 11px;
+        }
 
         .a-tabs {
-          display: grid; grid-template-columns: repeat(3, 1fr);
-          gap: 14px; margin-bottom: 28px;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 13px;
+          margin-bottom: 20px;
         }
 
         .a-tab {
-          border-radius: 24px; padding: 22px; cursor: pointer;
-          transition: 0.2s; border: 1px solid rgba(255,255,255,0.06);
-          background: rgba(255,255,255,0.03);
-        }
-        .a-tab:hover { border-color: rgba(121,34,242,0.3); background: rgba(121,34,242,0.06); }
-        .a-tab.active {
-          background: linear-gradient(135deg, rgba(121,34,242,0.28), rgba(155,69,245,0.16));
-          border-color: rgba(155,69,245,0.55);
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          min-width: 0;
+          padding: 19px;
+          border: 1px solid rgba(255,255,255,.065);
+          border-radius: 17px;
+          background: rgba(24,18,39,.7);
+          color: inherit;
+          text-align: left;
+          cursor: pointer;
+          transition: .2s;
         }
 
-        .a-tab-icon { font-size: 30px; margin-bottom: 12px; }
-        .a-tab-title { font-size: 17px; font-weight: 800; margin-bottom: 5px; }
-        .a-tab-desc { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.5; }
+        .a-tab:hover {
+          border-color: rgba(169,138,240,.3);
+          background: rgba(38,28,59,.8);
+          transform: translateY(-2px);
+        }
+
+        .a-tab.active {
+          border-color: rgba(169,138,240,.48);
+          background: linear-gradient(135deg, rgba(116,78,174,.25), rgba(31,23,48,.92));
+          box-shadow: inset 0 0 0 1px rgba(169,138,240,.06);
+        }
+
+        .a-tab-icon {
+          display: grid;
+          place-items: center;
+          width: 43px;
+          height: 43px;
+          flex-shrink: 0;
+          border-radius: 13px;
+          background: rgba(169,138,240,.11);
+          font-size: 20px;
+        }
+
+        .a-tab.active .a-tab-icon {
+          background: rgba(169,138,240,.2);
+        }
+
+        .a-tab-title {
+          margin-bottom: 5px;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .a-tab-desc {
+          color: rgba(235,226,255,.4);
+          font-size: 10px;
+          line-height: 1.5;
+        }
 
         .a-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 28px; padding: 28px;
+          padding: 27px;
+          border: 1px solid rgba(255,255,255,.07);
+          border-radius: 21px;
+          background: rgba(20,15,32,.88);
+          box-shadow: 0 20px 70px rgba(0,0,0,.13);
+          backdrop-filter: blur(12px);
+          animation: a-fade-in .25s ease;
+        }
+
+        @keyframes a-fade-in {
+          from { opacity: 0; transform: translateY(7px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .a-section-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-bottom: 23px;
         }
 
         .a-section-title {
-          font-size: 20px; font-weight: 800;
-          margin-bottom: 24px; letter-spacing: -0.03em;
+          font-size: 17px;
+          font-weight: 900;
+          letter-spacing: -.035em;
         }
 
-        /* Bot cards grid */
+        .a-section-caption {
+          margin-top: 5px;
+          color: rgba(235,226,255,.38);
+          font-size: 11px;
+        }
+
+        .a-count {
+          padding: 6px 10px;
+          border: 1px solid rgba(169,138,240,.17);
+          border-radius: 999px;
+          background: rgba(169,138,240,.08);
+          color: #bba3f0;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
         .a-bots-grid {
-          display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-          gap: 16px;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+          gap: 14px;
         }
 
         .a-bot-card {
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 22px; padding: 22px;
-          background: rgba(0,0,0,0.18);
-          transition: 0.2s;
+          min-width: 0;
+          padding: 19px;
+          border: 1px solid rgba(255,255,255,.065);
+          border-radius: 17px;
+          background: rgba(10,7,17,.4);
+          transition: .2s;
         }
-        .a-bot-card:hover { border-color: rgba(121,34,242,0.28); background: rgba(121,34,242,0.04); }
+
+        .a-bot-card:hover {
+          border-color: rgba(169,138,240,.23);
+          background: rgba(34,25,52,.45);
+        }
 
         .a-bot-header {
-          display: flex; align-items: center; justify-content: space-between;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
           margin-bottom: 18px;
         }
 
-        .a-bot-info { display: flex; align-items: center; gap: 12px; }
+        .a-bot-info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
 
-        .a-bot-avatar {
-          width: 48px; height: 48px; border-radius: 50%;
-          object-fit: cover; border: 1px solid rgba(121,34,242,0.3);
+        .a-bot-avatar,
+        .a-bot-avatar-fallback {
+          display: grid;
+          place-items: center;
+          width: 45px;
+          height: 45px;
+          flex-shrink: 0;
+          border: 1px solid rgba(169,138,240,.28);
+          border-radius: 50%;
+          object-fit: cover;
         }
 
         .a-bot-avatar-fallback {
-          width: 48px; height: 48px; border-radius: 50%;
-          background: rgba(121,34,242,0.2);
-          border: 1px solid rgba(121,34,242,0.3);
-          display: flex; align-items: center; justify-content: center;
-          font-weight: 900; font-size: 18px;
+          background: rgba(169,138,240,.14);
+          color: #c4adf5;
+          font-size: 17px;
+          font-weight: 900;
         }
 
-        .a-bot-name { font-weight: 800; font-size: 15px; margin-bottom: 3px; }
+        .a-bot-name {
+          overflow: hidden;
+          margin-bottom: 5px;
+          font-size: 13px;
+          font-weight: 800;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
 
         .a-bot-status {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px; font-weight: 700;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: .06em;
         }
 
         .a-open-btn {
-          padding: 8px 14px; border-radius: 12px;
-          border: 1px solid rgba(121,34,242,0.3);
-          background: rgba(121,34,242,0.12); color: #b47cff;
-          font-size: 11px; font-weight: 800; cursor: pointer;
-          font-family: 'JetBrains Mono', monospace;
-          transition: 0.2s; white-space: nowrap;
-          letter-spacing: 0.04em;
+          padding: 9px 12px;
+          border: 1px solid rgba(169,138,240,.24);
+          border-radius: 10px;
+          background: rgba(169,138,240,.09);
+          color: #bda4f1;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 10px;
+          font-weight: 800;
+          white-space: nowrap;
+          cursor: pointer;
+          transition: .2s;
         }
-        .a-open-btn:hover { background: rgba(121,34,242,0.22); border-color: rgba(121,34,242,0.5); color: #fff; }
 
-        /* Feature toggles */
-        .a-features { display: flex; flex-direction: column; gap: 12px; }
+        .a-open-btn:hover {
+          border-color: rgba(169,138,240,.5);
+          background: rgba(169,138,240,.18);
+          color: #fff;
+        }
+
+        .a-features {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
 
         .a-feature-row {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 10px 14px; border-radius: 14px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.05);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 10px 12px;
+          border: 1px solid rgba(255,255,255,.045);
+          border-radius: 11px;
+          background: rgba(255,255,255,.025);
         }
 
-        .a-feature-label { font-size: 13px; font-weight: 700; }
+        .a-feature-label {
+          color: rgba(245,241,255,.78);
+          font-size: 11px;
+          font-weight: 700;
+        }
 
         .a-switch-wrap {
-          position: relative; cursor: pointer;
-          opacity: 1; transition: opacity 0.2s;
+          position: relative;
+          width: 39px;
+          height: 22px;
+          flex-shrink: 0;
+          border: 0;
+          padding: 0;
+          border-radius: 999px;
+          cursor: pointer;
+          transition: .2s;
         }
-        .a-switch-wrap.loading { opacity: 0.5; pointer-events: none; }
 
-        .a-switch {
-          width: 52px; height: 28px; border-radius: 999px;
-          transition: background 0.2s;
-        }
-        .a-switch.on { background: #57f287; }
-        .a-switch.off { background: rgba(255,255,255,0.12); }
+        .a-switch-wrap.on { background: #a98af0; }
+        .a-switch-wrap.off { background: rgba(255,255,255,.15); }
+        .a-switch-wrap:disabled { opacity: .45; cursor: not-allowed; }
 
         .a-switch-circle {
-          width: 20px; height: 20px; border-radius: 50%;
-          background: #fff; position: absolute; top: 4px;
-          transition: left 0.2s;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+          position: absolute;
+          top: 3px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #fff;
+          box-shadow: 0 1px 4px rgba(0,0,0,.3);
+          transition: left .2s;
         }
-        .a-switch-circle.on { left: 28px; }
-        .a-switch-circle.off { left: 4px; }
 
-        /* Input styles */
-        .a-input {
-          width: 100%; padding: 14px 16px; border-radius: 16px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.04); color: #fff;
-          outline: none; margin-bottom: 14px; font-size: 14px;
-          font-family: 'Inter', sans-serif;
-          transition: border-color 0.2s;
+        .a-switch-circle.on { left: 20px; }
+        .a-switch-circle.off { left: 3px; }
+
+        .a-empty {
+          padding: 36px 15px;
+          border: 1px dashed rgba(255,255,255,.1);
+          border-radius: 14px;
+          color: rgba(235,226,255,.4);
+          font-size: 12px;
+          text-align: center;
         }
-        .a-input:focus { border-color: rgba(121,34,242,0.4); }
+
+        .a-form {
+          max-width: 720px;
+        }
+
+        .a-field {
+          margin-bottom: 18px;
+        }
+
+        .a-label {
+          display: block;
+          margin-bottom: 9px;
+          color: rgba(245,241,255,.75);
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .a-input,
+        .a-textarea,
+        .a-select {
+          display: block;
+          width: 100%;
+          padding: 13px 15px;
+          border: 1px solid rgba(255,255,255,.09);
+          border-radius: 12px;
+          outline: none;
+          background: rgba(9,6,16,.65);
+          color: #f5f1ff;
+          font-family: Inter, sans-serif;
+          font-size: 12px;
+          transition: border-color .2s, background .2s;
+        }
+
+        .a-input::placeholder,
+        .a-textarea::placeholder {
+          color: rgba(235,226,255,.25);
+        }
+
+        .a-input:focus,
+        .a-textarea:focus,
+        .a-select:focus {
+          border-color: rgba(169,138,240,.55);
+          background: rgba(20,14,32,.9);
+        }
 
         .a-textarea {
-          width: 100%; padding: 14px 16px; border-radius: 16px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.04); color: #fff;
-          outline: none; margin-bottom: 14px; font-size: 14px;
-          font-family: 'Inter', sans-serif; resize: vertical;
-          min-height: 100px; transition: border-color 0.2s;
+          min-height: 135px;
+          resize: vertical;
+          line-height: 1.6;
         }
-        .a-textarea:focus { border-color: rgba(121,34,242,0.4); }
 
         .a-select {
-          width: 100%; padding: 14px 16px; border-radius: 16px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: #111; color: #fff;
-          outline: none; margin-bottom: 14px; font-size: 14px;
-          cursor: pointer; appearance: none;
-          font-family: 'Inter', sans-serif;
+          cursor: pointer;
+        }
+
+        .a-select option {
+          background: #171022;
+          color: #fff;
+        }
+
+        .a-form-hint {
+          margin-top: 7px;
+          color: rgba(235,226,255,.32);
+          font-size: 10px;
         }
 
         .a-btn {
-          padding: 14px 24px; border-radius: 16px; border: none;
-          background: linear-gradient(135deg, #7922f2, #9b45f5);
-          color: #fff; font-weight: 800; cursor: pointer; font-size: 14px;
-          transition: opacity 0.2s; display: flex; align-items: center; gap: 8px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          min-height: 43px;
+          padding: 0 19px;
+          border: 1px solid rgba(222,158,104,.3);
+          border-radius: 12px;
+          background: linear-gradient(135deg, #bd8052, #d49a66);
+          color: #1a1010;
+          font-size: 11px;
+          font-weight: 900;
+          cursor: pointer;
+          transition: .2s;
         }
-        .a-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        /* Notices */
+        .a-btn:hover:not(:disabled) {
+          filter: brightness(1.1);
+          transform: translateY(-1px);
+        }
+
+        .a-btn:disabled {
+          opacity: .45;
+          cursor: not-allowed;
+        }
+
         .a-notice-row {
           padding: 18px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid rgba(255,255,255,.065);
         }
-        .a-notice-row:last-child { border-bottom: none; }
+
+        .a-notice-row:first-of-type { padding-top: 0; }
+        .a-notice-row:last-child { padding-bottom: 0; border-bottom: 0; }
 
         .a-notice-header {
-          display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 9px;
         }
 
-        .a-notice-actions { display: flex; gap: 10px; margin-top: 12px; }
-
-        .a-notice-toggle {
-          padding: 8px 14px; border-radius: 999px; border: none;
-          cursor: pointer; font-weight: 700; font-size: 12px;
-          transition: opacity 0.2s;
-        }
-        .a-notice-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* Toast */
-        .a-toast {
-          position: fixed; top: 24px; right: 24px;
-          padding: 14px 20px; border-radius: 16px;
-          font-weight: 700; font-size: 13px; z-index: 9999;
-          backdrop-filter: blur(12px);
-          animation: slideIn 0.25s ease;
-        }
-        .a-toast.success {
-          background: rgba(87,242,135,0.16); color: #57f287;
-          border: 1px solid rgba(87,242,135,0.25);
-        }
-        .a-toast.error {
-          background: rgba(248,113,113,0.16); color: #f87171;
-          border: 1px solid rgba(248,113,113,0.25);
+        .a-notice-icon {
+          font-size: 17px;
         }
 
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to { opacity: 1; transform: translateX(0); }
+        .a-notice-title {
+          min-width: 0;
+          font-size: 13px;
+          font-weight: 800;
+          overflow-wrap: anywhere;
         }
 
-        @media (max-width: 700px) {
+        .a-notice-status {
+          margin-left: auto;
+          padding: 5px 9px;
+          border-radius: 999px;
+          font-family: "JetBrains Mono", monospace;
+          font-size: 9px;
+          font-weight: 800;
+        }
+
+        .a-notice-message {
+          color: rgba(235,226,255,.52);
+          font-size: 12px;
+          line-height: 1.7;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+
+        .a-notice-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 13px;
+        }
+
+        .a-notice-action {
+          padding: 8px 12px;
+          border: 1px solid transparent;
+          border-radius: 9px;
+          font-size: 10px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: .2s;
+        }
+
+        .a-notice-action:disabled {
+          opacity: .4;
+          cursor: not-allowed;
+        }
+
+        .a-notice-action:hover:not(:disabled) {
+          filter: brightness(1.2);
+        }
+
+        .a-notice-action.activate {
+          border-color: rgba(169,138,240,.2);
+          background: rgba(169,138,240,.1);
+          color: #bda4f1;
+        }
+
+        .a-notice-action.deactivate {
+          border-color: rgba(241,139,121,.18);
+          background: rgba(241,139,121,.08);
+          color: #f18b79;
+        }
+
+        .a-notice-action.delete {
+          border-color: rgba(241,139,121,.18);
+          background: transparent;
+          color: #f18b79;
+        }
+
+        @media (max-width: 850px) {
+          .a-page { padding: 28px 20px 65px; }
           .a-tabs { grid-template-columns: 1fr; }
+          .a-tab { padding: 14px 16px; }
+          .a-tab-icon { width: 38px; height: 38px; }
+        }
+
+        @media (max-width: 600px) {
+          .a-page { padding: 23px 14px 50px; }
+          .a-header { align-items: flex-start; }
+          .a-title { font-size: 28px; }
+          .a-subtitle { max-width: 230px; line-height: 1.5; }
+          .a-logout { padding: 9px 12px; }
+          .a-overview { gap: 8px; }
+          .a-overview-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 12px;
+          }
+          .a-overview-icon { width: 32px; height: 32px; font-size: 15px; }
+          .a-overview-value { font-size: 18px; }
+          .a-overview-label { font-size: 9px; }
+          .a-card { padding: 18px 14px; border-radius: 16px; }
           .a-bots-grid { grid-template-columns: 1fr; }
-          .a-page { padding: 24px 18px 64px; }
+          .a-section-title { font-size: 15px; }
         }
       `}</style>
 
-      <div className="a-bgfx" />
-
-      {toast && (
-        <div className={`a-toast ${toast.type}`}>
-          {toast.type === "success" ? "✓" : "✕"} {toast.text}
-        </div>
-      )}
-
       <main className="a-page">
         <div className="a-container">
-
           <header className="a-header">
             <div>
-              <div className="a-tag">// painel administrativo</div>
+              <div className="a-tag">Painel administrativo</div>
               <h1 className="a-title">Admin NextDevs</h1>
+              <p className="a-subtitle">
+                Gerencie seus bots e as informações da plataforma.
+              </p>
             </div>
-            <button className="a-logout" onClick={logout}>Sair</button>
+
+            <button className="a-logout" onClick={logout}>
+              <span>↗</span> Sair
+            </button>
           </header>
 
-          {/* Tabs */}
-          <div className="a-tabs">
-            <div className={`a-tab ${selectedTab === "bots" ? "active" : ""}`} onClick={() => setSelectedTab("bots")}>
-              <div className="a-tab-icon">🤖</div>
-              <div className="a-tab-title">Bots</div>
-              <div className="a-tab-desc">Gerencie funcionalidades e acesse o painel de cada bot.</div>
-            </div>
-            <div className={`a-tab ${selectedTab === "create" ? "active" : ""}`} onClick={() => setSelectedTab("create")}>
-              <div className="a-tab-icon">📣</div>
-              <div className="a-tab-title">Criar Aviso</div>
-              <div className="a-tab-desc">Envie anúncios globais para o painel.</div>
-            </div>
-            <div className={`a-tab ${selectedTab === "notices" ? "active" : ""}`} onClick={() => setSelectedTab("notices")}>
-              <div className="a-tab-icon">📋</div>
-              <div className="a-tab-title">Avisos</div>
-              <div className="a-tab-desc">Visualize e controle avisos publicados.</div>
-            </div>
-          </div>
-
-          {/* Bots */}
-          {selectedTab === "bots" && (
-            <div className="a-card">
-              <div className="a-section-title">🤖 Bots & Funcionalidades</div>
-
-              {bots.length === 0 && (
-                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 14 }}>Nenhum bot encontrado.</div>
-              )}
-
-              <div className="a-bots-grid">
-                {bots.map((bot) => {
-                  const isOnline = bot.lastHeartbeat && Date.now() - new Date(bot.lastHeartbeat).getTime() < 30000;
-                  const f = bot.features;
-
-                  return (
-                    <div key={bot.id} className="a-bot-card">
-                      <div className="a-bot-header">
-                        <div className="a-bot-info">
-                          {bot.avatar ? (
-                            <img src={bot.avatar} alt={bot.name} className="a-bot-avatar" />
-                          ) : (
-                            <div className="a-bot-avatar-fallback">{bot.name[0]}</div>
-                          )}
-                          <div>
-                            <div className="a-bot-name">{bot.name}</div>
-                            <div className="a-bot-status" style={{ color: isOnline ? "#57f287" : "rgba(255,255,255,0.3)" }}>
-                              {isOnline ? "● ONLINE" : "● OFFLINE"}
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          className="a-open-btn"
-                          onClick={() => router.push(`/admin/bots/${bot.id}`)}
-                        >
-                          ABRIR →
-                        </button>
-                      </div>
-
-                      <div className="a-features">
-                        {(["announcements", "users", "logs", "settings"] as const).map((feat) => {
-                          const enabled = f?.[feat] ?? true;
-                          const key = `${bot.id}-${feat}`;
-                          const isLoading = loadingAction === key;
-
-                          return (
-                            <div key={feat} className="a-feature-row">
-                              <span className="a-feature-label">{FEATURE_LABELS[feat]}</span>
-                              <div
-                                className={`a-switch-wrap ${isLoading ? "loading" : ""}`}
-                                onClick={() => toggleFeature(bot.id, feat, !enabled)}
-                                style={{ position: "relative" }}
-                              >
-                                <div className={`a-switch ${enabled ? "on" : "off"}`} />
-                                <div className={`a-switch-circle ${enabled ? "on" : "off"}`} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+          <section className="a-overview">
+            <div className="a-overview-item">
+              <div className="a-overview-icon">🤖</div>
+              <div>
+                <div className="a-overview-value">{bots.length}</div>
+                <div className="a-overview-label">Bots cadastrados</div>
               </div>
             </div>
-          )}
 
-          {/* Criar aviso */}
-          {selectedTab === "create" && (
-            <div className="a-card">
-              <div className="a-section-title">📣 Criar Aviso</div>
-
-              <input
-                className="a-input"
-                placeholder="Título do aviso"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-              />
-
-              <textarea
-                className="a-textarea"
-                placeholder="Mensagem..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-              />
-
-              <select
-                className="a-select"
-                value={newType}
-                onChange={(e) => setNewType(e.target.value)}
-              >
-                <option value="INFO">ℹ️ Info</option>
-                <option value="UPDATE">🚀 Atualização</option>
-                <option value="WARNING">⚠️ Aviso</option>
-                <option value="MAINTENANCE">🔧 Manutenção</option>
-              </select>
-
-              <button
-                className="a-btn"
-                onClick={createNotice}
-                disabled={loadingAction === "create-notice" || !newTitle || !newMessage}
-              >
-                {loadingAction === "create-notice" ? "Publicando..." : "Publicar Aviso"}
-              </button>
+            <div className="a-overview-item">
+              <div className="a-overview-icon">🟢</div>
+              <div>
+                <div className="a-overview-value">{onlineBots}</div>
+                <div className="a-overview-label">Bots online</div>
+              </div>
             </div>
+
+            <div className="a-overview-item">
+              <div className="a-overview-icon">📢</div>
+              <div>
+                <div className="a-overview-value">{notices.length}</div>
+                <div className="a-overview-label">Avisos publicados</div>
+              </div>
+            </div>
+          </section>
+
+          <nav className="a-tabs" aria-label="Seções administrativas">
+            <button
+              className={`a-tab ${selectedTab === "bots" ? "active" : ""}`}
+              onClick={() => setSelectedTab("bots")}
+            >
+              <div className="a-tab-icon">🤖</div>
+              <div>
+                <div className="a-tab-title">Bots</div>
+                <div className="a-tab-desc">
+                  Gerencie funcionalidades e acesse cada painel.
+                </div>
+              </div>
+            </button>
+
+            <button
+              className={`a-tab ${selectedTab === "create" ? "active" : ""}`}
+              onClick={() => setSelectedTab("create")}
+            >
+              <div className="a-tab-icon">📣</div>
+              <div>
+                <div className="a-tab-title">Criar aviso</div>
+                <div className="a-tab-desc">
+                  Publique comunicados para os usuários.
+                </div>
+              </div>
+            </button>
+
+            <button
+              className={`a-tab ${selectedTab === "notices" ? "active" : ""}`}
+              onClick={() => setSelectedTab("notices")}
+            >
+              <div className="a-tab-icon">📋</div>
+              <div>
+                <div className="a-tab-title">Avisos</div>
+                <div className="a-tab-desc">
+                  Visualize e controle os avisos publicados.
+                </div>
+              </div>
+            </button>
+          </nav>
+
+          {selectedTab === "bots" && (
+            <section className="a-card">
+              <div className="a-section-heading">
+                <div>
+                  <h2 className="a-section-title">Bots & Funcionalidades</h2>
+                  <p className="a-section-caption">
+                    Controle os módulos disponíveis em cada bot.
+                  </p>
+                </div>
+                <span className="a-count">{bots.length} BOTS</span>
+              </div>
+
+              {bots.length === 0 ? (
+                <div className="a-empty">Nenhum bot encontrado.</div>
+              ) : (
+                <div className="a-bots-grid">
+                  {bots.map((bot) => {
+                    const heartbeat = bot.lastHeartbeat
+                      ? new Date(bot.lastHeartbeat).getTime()
+                      : 0;
+
+                    const isOnline =
+                      Number.isFinite(heartbeat) &&
+                      heartbeat > 0 &&
+                      Date.now() - heartbeat < 30000;
+
+                    const features = bot.features;
+
+                    return (
+                      <article key={bot.id} className="a-bot-card">
+                        <div className="a-bot-header">
+                          <div className="a-bot-info">
+                            {bot.avatar ? (
+                              <img
+                                src={bot.avatar}
+                                alt={bot.name}
+                                className="a-bot-avatar"
+                              />
+                            ) : (
+                              <div className="a-bot-avatar-fallback">
+                                {bot.name?.[0]?.toUpperCase() || "B"}
+                              </div>
+                            )}
+
+                            <div style={{ minWidth: 0 }}>
+                              <div className="a-bot-name">{bot.name}</div>
+                              <div
+                                className="a-bot-status"
+                                style={{
+                                  color: isOnline
+                                    ? "#a6d8b5"
+                                    : "rgba(235,226,255,.3)",
+                                }}
+                              >
+                                {isOnline ? "● ONLINE" : "● OFFLINE"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            className="a-open-btn"
+                            onClick={() =>
+                              router.push(`/admin/bots/${bot.id}`)
+                            }
+                          >
+                            ABRIR →
+                          </button>
+                        </div>
+
+                        <div className="a-features">
+                          {(
+                            Object.keys(FEATURE_LABELS) as Array<
+                              keyof typeof FEATURE_LABELS
+                            >
+                          ).map((feature) => {
+                            const enabled = features?.[feature] ?? true;
+                            const key = `${bot.id}-${feature}`;
+                            const isLoading = loadingAction === key;
+
+                            return (
+                              <div key={feature} className="a-feature-row">
+                                <span className="a-feature-label">
+                                  {FEATURE_LABELS[feature]}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={enabled}
+                                  aria-label={`Ativar ${FEATURE_LABELS[feature]}`}
+                                  disabled={isLoading}
+                                  className={`a-switch-wrap ${
+                                    enabled ? "on" : "off"
+                                  }`}
+                                  onClick={() =>
+                                    toggleFeature(bot.id, feature, !enabled)
+                                  }
+                                >
+                                  <span
+                                    className={`a-switch-circle ${
+                                      enabled ? "on" : "off"
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
           )}
 
-          {/* Avisos */}
-          {selectedTab === "notices" && (
-            <div className="a-card">
-              <div className="a-section-title">📋 Avisos Publicados</div>
+          {selectedTab === "create" && (
+            <section className="a-card">
+              <div className="a-section-heading">
+                <div>
+                  <h2 className="a-section-title">Criar aviso</h2>
+                  <p className="a-section-caption">
+                    O comunicado será disponibilizado no painel.
+                  </p>
+                </div>
+              </div>
 
-              {notices.length === 0 && (
-                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 14 }}>Nenhum aviso publicado.</div>
-              )}
+              <div className="a-form">
+                <div className="a-field">
+                  <label className="a-label" htmlFor="notice-title">
+                    Título do aviso
+                  </label>
+                  <input
+                    id="notice-title"
+                    className="a-input"
+                    placeholder="Ex.: Atualização da plataforma"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    maxLength={100}
+                  />
+                </div>
 
-              {notices.map((n) => (
-                <div key={n.id} className="a-notice-row">
-                  <div className="a-notice-header">
-                    <span style={{ fontSize: 20 }}>{NOTICE_ICONS[n.type]}</span>
-                    <span style={{ fontWeight: 800, color: NOTICE_COLORS[n.type] }}>{n.title}</span>
-                    <span style={{
-                      marginLeft: "auto",
-                      fontSize: 10,
-                      fontFamily: "monospace",
-                      padding: "4px 10px",
-                      borderRadius: 999,
-                      background: n.active ? "rgba(87,242,135,0.12)" : "rgba(255,255,255,0.06)",
-                      color: n.active ? "#57f287" : "rgba(255,255,255,0.35)",
-                      fontWeight: 800,
-                    }}>
-                      {n.active ? "ATIVO" : "INATIVO"}
-                    </span>
-                  </div>
-
-                  <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, lineHeight: 1.6 }}>
-                    {n.message}
-                  </div>
-
-                  <div className="a-notice-actions">
-                    <button
-                      className="a-notice-toggle"
-                      disabled={loadingAction === `notice-${n.id}`}
-                      style={{
-                        background: n.active ? "rgba(248,113,113,0.12)" : "rgba(87,242,135,0.12)",
-                        color: n.active ? "#f87171" : "#57f287",
-                      }}
-                      onClick={() => toggleNotice(n.id, !n.active)}
-                    >
-                      {loadingAction === `notice-${n.id}` ? "..." : n.active ? "Desativar" : "Ativar"}
-                    </button>
-
-                    <button
-                      className="a-notice-toggle"
-                      disabled={loadingAction === `delete-${n.id}`}
-                      style={{ background: "rgba(248,113,113,0.1)", color: "#f87171" }}
-                      onClick={() => deleteNotice(n.id)}
-                    >
-                      {loadingAction === `delete-${n.id}` ? "..." : "Excluir"}
-                    </button>
+                <div className="a-field">
+                  <label className="a-label" htmlFor="notice-message">
+                    Mensagem
+                  </label>
+                  <textarea
+                    id="notice-message"
+                    className="a-textarea"
+                    placeholder="Escreva o conteúdo do comunicado..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    maxLength={2000}
+                  />
+                  <div className="a-form-hint">
+                    {newMessage.length}/2000 caracteres
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="a-field">
+                  <label className="a-label" htmlFor="notice-type">
+                    Tipo de aviso
+                  </label>
+                  <select
+                    id="notice-type"
+                    className="a-select"
+                    value={newType}
+                    onChange={(e) =>
+                      setNewType(e.target.value as Notice["type"])
+                    }
+                  >
+                    <option value="INFO">ℹ️ Informação</option>
+                    <option value="UPDATE">🚀 Atualização</option>
+                    <option value="WARNING">⚠️ Aviso importante</option>
+                    <option value="MAINTENANCE">🔧 Manutenção</option>
+                  </select>
+                </div>
+
+                <button
+                  className="a-btn"
+                  onClick={createNotice}
+                  disabled={
+                    loadingAction === "create-notice" ||
+                    !newTitle.trim() ||
+                    !newMessage.trim()
+                  }
+                >
+                  {loadingAction === "create-notice"
+                    ? "Publicando..."
+                    : "↗ Publicar aviso"}
+                </button>
+              </div>
+            </section>
           )}
 
+          {selectedTab === "notices" && (
+            <section className="a-card">
+              <div className="a-section-heading">
+                <div>
+                  <h2 className="a-section-title">Avisos publicados</h2>
+                  <p className="a-section-caption">
+                    Gerencie os comunicados exibidos na plataforma.
+                  </p>
+                </div>
+                <span className="a-count">{notices.length} AVISOS</span>
+              </div>
+
+              {notices.length === 0 ? (
+                <div className="a-empty">Nenhum aviso publicado.</div>
+              ) : (
+                notices.map((notice) => (
+                  <article key={notice.id} className="a-notice-row">
+                    <div className="a-notice-header">
+                      <span className="a-notice-icon">
+                        {NOTICE_ICONS[notice.type]}
+                      </span>
+
+                      <span
+                        className="a-notice-title"
+                        style={{ color: NOTICE_COLORS[notice.type] }}
+                      >
+                        {notice.title}
+                      </span>
+
+                      <span
+                        className="a-notice-status"
+                        style={{
+                          background: notice.active
+                            ? "rgba(166,216,181,.1)"
+                            : "rgba(255,255,255,.06)",
+                          color: notice.active
+                            ? "#a6d8b5"
+                            : "rgba(235,226,255,.38)",
+                        }}
+                      >
+                        {notice.active ? "ATIVO" : "INATIVO"}
+                      </span>
+                    </div>
+
+                    <p className="a-notice-message">{notice.message}</p>
+
+                    <div className="a-notice-actions">
+                      <button
+                        className={`a-notice-action ${
+                          notice.active ? "deactivate" : "activate"
+                        }`}
+                        disabled={loadingAction === `notice-${notice.id}`}
+                        onClick={() =>
+                          toggleNotice(notice.id, !notice.active)
+                        }
+                      >
+                        {loadingAction === `notice-${notice.id}`
+                          ? "Aguarde..."
+                          : notice.active
+                            ? "Desativar"
+                            : "Ativar"}
+                      </button>
+
+                      <button
+                        className="a-notice-action delete"
+                        disabled={loadingAction === `delete-${notice.id}`}
+                        onClick={() => deleteNotice(notice.id)}
+                      >
+                        {loadingAction === `delete-${notice.id}`
+                          ? "Excluindo..."
+                          : "Excluir"}
+                      </button>
+                    </div>
+                  </article>
+                ))
+              )}
+            </section>
+          )}
         </div>
       </main>
     </>
